@@ -1,7 +1,9 @@
+#to do: fix rentincreasedate, then work on 'iseligible' function
 #if there is no "last rent increase" date, and this doesn't correspond with
 #the move-in date, be sure to flag that there is something wrong with tenant
-import csv
+import csv, math
 
+rentincreasedate = 'Aug 1st, 2022 '
 path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
 file = open(path)
 reader = csv.reader(file)
@@ -17,10 +19,18 @@ def isprop(r):
     if len(r[0])>15:
         return True
 def isPOH(r):
-    if r[7]>500:
+    rent = int(r[7].partition('.')[0].replace(',',''))
+    if rent>500:
         return True
     else:
         return False
+
+#is tenant eligible for rent increase?
+def isEligible(r):
+    #case 1: if last rent increase was one yr ago, return true
+
+    #case 2: if there is no last rent increase, when was the move-in date?
+    #if move-in date is more than 1 yr, then return true
 
 #given a csv data set (list), alter the data set according to how we want to alter the csv
 def alter(data):
