@@ -1,3 +1,5 @@
+#if there is no "last rent increase" date, and this doesn't correspond with
+#the move-in date, be sure to flag that there is something wrong with tenant
 import csv
 
 path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
@@ -6,21 +8,48 @@ reader = csv.reader(file)
 data = list(reader)
 # print(data)
 
-#given a string, return whether it is a tenant
-def istenant(x):
-    if len(x)>3:
+#given a list, return whether (that row) is a tenant
+def istenant(r):
+    if len(r[3])>3 and r[4]=='Current':
         return True
-#given a string, return whether it is one of our props
-def isprop(x):
-    if len(x)>15:
+#given a list, return whether (that row) is one of our props
+def isprop(r):
+    if len(r[0])>15:
         return True
+def isPOH(r):
+    if r[7]>500:
+        return True
+    else:
+        return False
 
-prop = 'no prop'
-for r in data:
-    if isprop(r[0]):
-        prop = r[0]
-    if istenant(r[3]):
-        print(r[3]+ "--"+prop)
-        
+#given a csv data set (list), alter the data set according to how we want to alter the csv
+def alter(data):
+    prop = 'no prop'
+    for r in data:
+        #populate column I
+        if isprop(r):
+            prop = r[0]
+        if istenant(r):
+            r[8] = prop
+            if isPOH(r):
+                r[9] = 'POH'
+            else:
+                r[9] = 'Tenant Owned'
+        #populate column J
+
+    return data
+
+#loop thru altered data set to create new csv
+def NewCsv(data):
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\output.csv'
+    output = open(path,'w',newline='')
+    writer = csv.writer(output)
+    for r in data:
+        writer.writerow(r)
+    output.close()
+
+# print(alter(data))
+NewCsv(alter(data))
+
     #if A longer than 5 chars: prop = row A
     #if isTenant: write(row I) = property
