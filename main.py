@@ -10,12 +10,12 @@ path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
 file = open(path)
 reader = csv.reader(file)
 data = list(reader)
+proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
+     'Hitching Post', 'Patrician', 'Wishing Well', 'SFH']
 # print(data)
 
 #given a property (string), abbreviate it (or group it into broader category [like 'SFH'])
 def abbr_prop(longpropname):
-    proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
-     'Hitching Post', 'SFH', 'Patrician', 'Wishing Well']
     SFH_list = ['Chestnut','Elm','12398 4th','12993 2nd','Reedywoods','North Grove',\
                 'Massachusetts','Michigan','906 N 4th','Indian School','Cottonwood']
     for i in SFH_list:
@@ -58,27 +58,27 @@ def timesincelastinc(r):
 #given a list, return whether (that row) is Eligible for rent increase
 def isEligible(r):
     if timesincelastinc(r)>=365:
-        return 'Eligible'
+        return 'Is Eligible'
     return ''
 
 #given a csv data set (list), alter the data set according to how we want to alter the csv
 def alter(data):
     prop = 'no prop'
     for r in data:
-
-        if isprop(r):
-            prop = r[0]
-        if istenant(r):
-            # populate column I
-            r[8] = prop
-            # populate column J
-            if isPOH(r):
-                r[9] = 'POH'
-                # populate column K
-                r[10] = timesincelastinc(r)
-                r[11] = isEligible(r)
-            else:
-                r[9] = 'Tenant Owned'
+        if len(r)>0:
+            if isprop(r):
+                prop = r[0]
+            if istenant(r):
+                # populate column I
+                r[8] = abbr_prop(prop)
+                # populate column J
+                if isPOH(r):
+                    r[9] = 'POH'
+                    # populate column K
+                    r[10] = timesincelastinc(r)
+                    r[11] = isEligible(r)
+                else:
+                    r[9] = 'Tenant Owned'
 
     return data
 
@@ -90,26 +90,39 @@ def NewCsv(data,path):
         writer.writerow(r)
     output.close()
 
+#clear any given CSV
+def clearCSV(path):
+    filename = path
+    # opening the file with w+ mode truncates the file
+    f = open(filename, "w+")
+    f.close()
+
 #organize data, to make a little easier to read
 def organize(data):
-    print ('lorem ipsum: still working')
+
+    #first, clear the old junk from CSV file
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\organized_output.csv'
+    clearCSV(path)
+
+    for p in proplist:
+        append_list_as_row(path,[p])
+        for r in data:
+            if istenant(r) and isPOH(r) and isEligible(r) == "Is Eligible" and r[8] in p:
+                append_list_as_row(path,r)
+    return None
 
 # Create the output csv
+altered_data = alter(data)
 output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\output.csv'
-NewCsv(alter(data), output_path)
-
-#Lastly, Create the organized_output.csv
-# organized_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\organized_output.csv'
-# NewCsv(organize(alter(data)), organized_path)
+NewCsv(altered_data, output_path)
 
 def append_list_as_row(file_name, list_of_elem):
-        # Open file in append mode
-        with open(file_name, 'a+', newline='') as write_obj:
-            # Create a writer object from csv module
-            csv_writer = writer(write_obj)
-            # Add contents of list as last row in the csv file
-            csv_writer.writerow(list_of_elem)
-
-file_name = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\test.csv'
-list = ['a','b','c','d','e','f']
-append_list_as_row(file_name,list)
+    # Open file in append mode
+    with open(file_name, 'a+', newline='') as write_obj:
+        # Create a writer object from csv module
+        csv_writer = writer(write_obj)
+        # Add contents of list as last row in the csv file
+        csv_writer.writerow(list_of_elem)
+#
+organize(altered_data)
+# print(data)
