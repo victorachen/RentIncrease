@@ -1,6 +1,7 @@
-#to do: line 85: rewrite def alter, for new csv file format
+#to do: incorporate tenant owned homes
+#to do: make this automatic on gmail (2 rent increase dates per year - automatically send the email)
 
-import csv, datetime
+import csv, datetime, ezgmail, os
 from datetime import date, datetime
 from csv import writer
 
@@ -41,7 +42,7 @@ def isprop(r):
 #given a list, return whether (that row) is a POH tenant
 def isPOH(r):
     rent = int(r[7].partition('.')[0].replace(',',''))
-    if rent>550:
+    if rent>500:
         return True
     else:
         return False
@@ -60,7 +61,7 @@ def timesincelastinc(r):
 
 #given a list, return whether (that row) is Eligible for rent increase
 def isEligible(r):
-    if timesincelastinc(r)>=365:
+    if timesincelastinc(r)>=334:
         return 'Is Eligible'
     return ''
 
@@ -128,3 +129,11 @@ NewCsv(altered_data, output_path)
 
 # Create the organized_output csv
 organize(altered_data)
+
+#On June 1st, send an email attachment with the csv file
+def sendemail():
+    os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
+    ezgmail.init()
+    ezgmail.send('vchen2120@gmail.com','6/20 getting started','')
+
+sendemail()
