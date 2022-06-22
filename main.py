@@ -140,8 +140,10 @@ def DownloadRentRoll():
     downloadfolder = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv'
     mostrecentemail.messages[0].downloadAllAttachments(downloadFolder=downloadfolder)
     #Name the most recently downloaded rent roll (what you did just above) --> "rentroll.csv"
-
-
+    today = str(date.today()).replace('-','')
+    oldname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
+    newname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
+    os.rename(oldname,newname)
 
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
 os.remove(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv')
