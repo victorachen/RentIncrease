@@ -1,16 +1,32 @@
-#work on line 170: get rid of os.remove function; simply renaming the appfolio csv file to rentroll.csv should do the trick
-#and be less buggy 
+#adjust isEligible function (calls lastincreasedate, which takes in 2 arguments now)
+#update your email body
+#send on the 1st of every month
 #to do: incorporate tenant owned homes
 #to do: make this automatic on gmail (2 rent increase dates per year - automatically send the email)
 
 import csv, datetime, ezgmail, os
+import os.path
 from datetime import date, datetime
 from csv import writer
 os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
 ezgmail.init()
 
+#return the date 3 months from now (copied pasted from stackoverflow)
+def Xmonthsfromnow(x):
+    D = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct',
+                 11: 'Nov', 12: 'Dec'}
+    today = date.today()
+    day = today.day
+    month = today.month
+    year = today.year
+    inc = x
+    month = (month + inc - 1) % 12 + 1
+    year = year + (month + inc - 1) // 12
+    #return the end result as a string, so we can compare with getstrtoday()
+    combined = str(month)+'/'+str(day)+'/'+str(year)
+    return combined
 
-rentincreasedate = '8/1/2022'
+# rentincreasedate = Xmonthsfromnow(2)
 proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
          'Hitching Post', 'Patrician', 'Wishing Well', 'SFH']
 
@@ -52,7 +68,11 @@ def days_between(currentrentincrease, lastrentincrease):
     lastrentincrease = datetime.strptime(lastrentincrease, "%m/%d/%Y")
     return abs((currentrentincrease - lastrentincrease).days)
 
-def timesincelastinc(r):
+def timesincelastinc(r,tenant_type):
+    if tenant_type == 'POH':
+        rentincreasedate = Xmonthsfromnow(2)
+    if tenant_type == 'TOH':
+        rentincreasedate = Xmonthsfromnow(4)
     timediff = ''
     if len(r[6])>1:
         return days_between(rentincreasedate,r[6])
@@ -61,12 +81,11 @@ def timesincelastinc(r):
 
 #given a list, return whether (that row) is Eligible for rent increase
 def isEligible(r):
-    if timesincelastinc(r)>=334:
+    if timesincelastinc(r,'POH')>=334:
         return 'Is Eligible'
     return ''
 
-#Holy fuck, have to rewrite alter
-def alter(data):
+def alterPOH(data):
     prop = 'no prop'
     for r in data:
         if isprop(r):
@@ -78,10 +97,29 @@ def alter(data):
             if isPOH(r):
                 r.append('POH')
             # populate column K
-                r.append(timesincelastinc(r))
+                r.append(timesincelastinc(r,'POH'))
                 r.append(isEligible(r))
             else:
                 r.append('Tenant Owned')
+    return data
+
+#copied pasta'd from above (fingers crossed it works)
+def alterTOH(data):
+    prop = 'no prop'
+    for r in data:
+        if isprop(r):
+            prop = r[0]
+        if istenant(r):
+            # populate column I
+            r.append(abbr_prop(prop))
+            # populate column J
+            if not isPOH(r):
+                r.append('Tenant Owned')
+                # populate column K
+                r.append(timesincelastinc(r,'TOH'))
+                r.append(isEligible(r))
+            else:
+                r.append('POH')
     return data
 
 #Helper function: loop thru data set to create new csv --> export new csv to --> output_path
@@ -99,11 +137,17 @@ def clearCSV(path):
     f = open(filename, "w+")
     f.close()
 
-#organize data, to make a little easier to read
-def organize(data):
+#create CSV for eligible POH residents
+def eligiblePOH(data):
     #first, clear the old junk from CSV file
-    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\organized_output.csv'
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     clearCSV(path)
+
+    # title each column
+    titles = ['Unit #', '', 'Bd/Ba', 'Tenant', 'Status', 'Move-in', 'Last Increase', '$ Rent', 'Property',
+              'Type', 'Days Since Last Increase', 'Eligibility']
+    append_list_as_row(path, titles)
+    append_list_as_row(path, [])
 
     for p in proplist:
         append_list_as_row(path,[p])
@@ -112,6 +156,24 @@ def organize(data):
                 append_list_as_row(path,r)
     return None
 
+#copied pasta from above
+def eligibleTOH(data):
+    #first, clear the old junk from CSV file
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    clearCSV(path)
+
+    #title each column
+    titles=['Unit #','','Bd/Ba','Tenant','Status','Move-in','Last Increase','$ Rent','Property',
+            'Type','Days Since Last Increase','Eligibility']
+    append_list_as_row(path,titles)
+    append_list_as_row(path,[])
+
+    for p in proplist:
+        append_list_as_row(path,[p])
+        for r in data:
+            if istenant(r) and not isPOH(r) and isEligible(r) == "Is Eligible" and r[8] in p:
+                append_list_as_row(path,r)
+    return None
 
 def append_list_as_row(file_name, list_of_elem):
     # Open file in append mode
@@ -123,11 +185,16 @@ def append_list_as_row(file_name, list_of_elem):
 
 #On June 1st, send an email attachment with the csv file
 def sendemail():
-    outputCSV = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\output.csv'
-    organized_outputCSV = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\organized_output.csv'
-    ezgmail.send('vchen2120@gmail.com','6/20 getting started','',[outputCSV,organized_outputCSV])
-    textbody = 'This is an automated email detailing those tenants who are eligible for rent increase\
-     in 3 months (in [insertdate])'
+    POHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
+    TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+    eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
+    eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    emailtitle = 'POH Residents Eligible for Rent Increase On '+Xmonthsfromnow(2)
+    emailbody = '''This is an automated email detailing those POH tenants who are eligible for rent increase 2 months from now ('''+ Xmonthsfromnow(2)+'''). \n 
+    TOH csv files reflect those tenants eligible for rent 4 months from now'''
+
+    ezgmail.send('vchen2120@gmail.com',emailtitle,emailbody,[POHoutput,TOHoutput,eligiblePOH,eligibleTOH])
+
 
 #scrape victoreceipts@gmail.com for AppFolio's daily automated email
 def DownloadRentRoll():
@@ -140,7 +207,6 @@ def DownloadRentRoll():
     #Name the most recently downloaded rent roll (what you did just above) --> "rentroll.csv"
     today = str(date.today()).replace('-','')
     oldname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
-    print(oldname)
     newname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
     os.rename(oldname,newname)
 
@@ -152,34 +218,28 @@ def GetData():
     data = list(reader)
     return data
 
-#return the date 3 months from now (copied pasted from stackoverflow)
-def threemonthsfromnow():
-    today = date.today()
-    day = today.day
-    month = today.month
-    year = today.year
-    inc = 3
-    month = (month + inc - 1) % 12 + 1
-    year = year + (month + inc - 1) // 12
-    #return the end result as a string, so we can compare with getstrtoday()
-    combined = str(month)+'/'+str(day)+'/'+str(year)
-    # my_date = datetime.datetime.strptime(combined, "%m/%d/%Y")
-    # print(my_date.strftime("%b %d, %Y"))  # Dec 23, 2011
-    return None
-
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
-os.remove(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv')
+fname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
+if os.path.isfile(fname):
+    os.remove(fname)
 #Then, let's download a fresh rentroll from Appfolio
 DownloadRentRoll()
-# Create the output csv
-altered_data = alter(GetData())
-output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\output.csv'
-NewCsv(altered_data, output_path)
 
-# Create the organized_output csv
-organize(altered_data)
+# Create POHoutput.csv
+POH_data = alterPOH(GetData())
+output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
+NewCsv(POH_data, output_path)
+
+#Create TOHoutput.csv
+TOH_data = alterTOH(GetData())
+output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+NewCsv(TOH_data, output_path)
+
+# Create eligiblePOH.csv
+eligiblePOH(POH_data)
+
+#create eligibleTOH.csv
+eligibleTOH(TOH_data)
 
 #send the email to all prop managers
-# sendemail()
-
-threemonthsfromnow()
+sendemail()
