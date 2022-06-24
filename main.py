@@ -1,8 +1,5 @@
-#adjust isEligible function (calls lastincreasedate, which takes in 2 arguments now)
-#update your email body
-#send on the 1st of every month
-#to do: incorporate tenant owned homes
-#to do: make this automatic on gmail (2 rent increase dates per year - automatically send the email)
+
+#automate this on Brian Nguyen's old laptop
 
 import csv, datetime, ezgmail, os
 import os.path
@@ -17,11 +14,11 @@ def Xmonthsfromnow(x):
                  11: 'Nov', 12: 'Dec'}
     today = date.today()
     day = today.day
-    month = today.month
-    year = today.year
+    this_month = today.month
+    this_year = today.year
     inc = x
-    month = (month + inc - 1) % 12 + 1
-    year = year + (month + inc - 1) // 12
+    month = (this_month + inc - 1) % 12 + 1
+    year = this_year + (this_month + inc - 1) // 12
     #return the end result as a string, so we can compare with getstrtoday()
     combined = str(month)+'/'+str(day)+'/'+str(year)
     return combined
@@ -80,8 +77,8 @@ def timesincelastinc(r,tenant_type):
     return days_between(rentincreasedate,r[5])
 
 #given a list, return whether (that row) is Eligible for rent increase
-def isEligible(r):
-    if timesincelastinc(r,'POH')>=334:
+def isEligible(r,tenant_type):
+    if timesincelastinc(r,tenant_type)>=334:
         return 'Is Eligible'
     return ''
 
@@ -98,7 +95,7 @@ def alterPOH(data):
                 r.append('POH')
             # populate column K
                 r.append(timesincelastinc(r,'POH'))
-                r.append(isEligible(r))
+                r.append(isEligible(r,'POH'))
             else:
                 r.append('Tenant Owned')
     return data
@@ -117,7 +114,7 @@ def alterTOH(data):
                 r.append('Tenant Owned')
                 # populate column K
                 r.append(timesincelastinc(r,'TOH'))
-                r.append(isEligible(r))
+                r.append(isEligible(r,'TOH'))
             else:
                 r.append('POH')
     return data
@@ -146,13 +143,15 @@ def eligiblePOH(data):
     # title each column
     titles = ['Unit #', '', 'Bd/Ba', 'Tenant', 'Status', 'Move-in', 'Last Increase', '$ Rent', 'Property',
               'Type', 'Days Since Last Increase', 'Eligibility']
+    header = ['*Spreadsheet represents all POH tenants eligible for rent increase on ' + Xmonthsfromnow(2)]
+    append_list_as_row(path, header)
     append_list_as_row(path, titles)
     append_list_as_row(path, [])
 
     for p in proplist:
         append_list_as_row(path,[p])
         for r in data:
-            if istenant(r) and isPOH(r) and isEligible(r) == "Is Eligible" and r[8] in p:
+            if istenant(r) and isPOH(r) and isEligible(r,'POH') == "Is Eligible" and r[8] in p:
                 append_list_as_row(path,r)
     return None
 
@@ -165,13 +164,15 @@ def eligibleTOH(data):
     #title each column
     titles=['Unit #','','Bd/Ba','Tenant','Status','Move-in','Last Increase','$ Rent','Property',
             'Type','Days Since Last Increase','Eligibility']
+    header = ['*Spreadsheet represents all TOH tenants eligible for rent increase on ' + Xmonthsfromnow(4)]
+    append_list_as_row(path, header)
     append_list_as_row(path,titles)
     append_list_as_row(path,[])
 
     for p in proplist:
         append_list_as_row(path,[p])
         for r in data:
-            if istenant(r) and not isPOH(r) and isEligible(r) == "Is Eligible" and r[8] in p:
+            if istenant(r) and not isPOH(r) and isEligible(r,'TOH') == "Is Eligible" and r[8] in p:
                 append_list_as_row(path,r)
     return None
 
@@ -190,8 +191,9 @@ def sendemail():
     eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     emailtitle = 'POH Residents Eligible for Rent Increase On '+Xmonthsfromnow(2)
-    emailbody = '''This is an automated email detailing those POH tenants who are eligible for rent increase 2 months from now ('''+ Xmonthsfromnow(2)+'''). \n 
-    TOH csv files reflect those tenants eligible for rent 4 months from now'''
+    emailbody = '''This is an automated email detailing:
+    (A) POH tenants eligible for rent increase 2 months from now ('''+ Xmonthsfromnow(2)+''') -- must give 30 day notice. \n 
+    (B) TOH tenants eligible for rent increase 4 months from now ('''+ Xmonthsfromnow(4)+''') -- must give 90 day notice.'''
 
     ezgmail.send('vchen2120@gmail.com',emailtitle,emailbody,[POHoutput,TOHoutput,eligiblePOH,eligibleTOH])
 
