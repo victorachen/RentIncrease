@@ -1,21 +1,28 @@
+#implement line 200-201 (sendemail) to make it dynamic, with whatever date is today
+#Hitching Post -- 7/1/2023
+#Wishing Well -- 10/1/2022
+#Holiday -- 2/1/2022
+#Mt Vista -- 2/1/2022
+#Crestview -- 1/1/2022
 
-#automate this on Brian Nguyen's old laptop
+import datetime
+dateinput = datetime.date(2023,6,1)
 
-import csv, datetime, ezgmail, os
-import os.path
 from datetime import date, datetime
+today = date.today()
+# print(dateinput==today)
+
+import csv, ezgmail, os
+import os.path
 from csv import writer
 os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
 ezgmail.init()
 
-#return the date 3 months from now (copied pasted from stackoverflow)
-def Xmonthsfromnow(x):
-    D = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct',
-                 11: 'Nov', 12: 'Dec'}
-    today = date.today()
-    day = today.day
-    this_month = today.month
-    this_year = today.year
+#return the date 3 months from dateinput
+def Xmonthsfromnow(x,dateinput):
+    day = dateinput.day
+    this_month = dateinput.month
+    this_year = dateinput.year
     inc = x
     month = (this_month + inc - 1) % 12 + 1
     year = this_year + (this_month + inc - 1) // 12
@@ -67,9 +74,9 @@ def days_between(currentrentincrease, lastrentincrease):
 
 def timesincelastinc(r,tenant_type):
     if tenant_type == 'POH':
-        rentincreasedate = Xmonthsfromnow(2)
+        rentincreasedate = Xmonthsfromnow(2,dateinput)
     if tenant_type == 'TOH':
-        rentincreasedate = Xmonthsfromnow(4)
+        rentincreasedate = Xmonthsfromnow(4,dateinput)
     timediff = ''
     if len(r[6])>1:
         return days_between(rentincreasedate,r[6])
@@ -78,7 +85,7 @@ def timesincelastinc(r,tenant_type):
 
 #given a list, return whether (that row) is Eligible for rent increase
 def isEligible(r,tenant_type):
-    if timesincelastinc(r,tenant_type)>=334:
+    if timesincelastinc(r,tenant_type)>=330:
         return 'Is Eligible'
     return ''
 
@@ -101,23 +108,23 @@ def alterPOH(data):
     return data
 
 #copied pasta'd from above (fingers crossed it works)
-def alterTOH(data):
-    prop = 'no prop'
-    for r in data:
-        if isprop(r):
-            prop = r[0]
-        if istenant(r):
-            # populate column I
-            r.append(abbr_prop(prop))
-            # populate column J
-            if not isPOH(r):
-                r.append('Tenant Owned')
-                # populate column K
-                r.append(timesincelastinc(r,'TOH'))
-                r.append(isEligible(r,'TOH'))
-            else:
-                r.append('POH')
-    return data
+# def alterTOH(data):
+#     prop = 'no prop'
+#     for r in data:
+#         if isprop(r):
+#             prop = r[0]
+#         if istenant(r):
+#             # populate column I
+#             r.append(abbr_prop(prop))
+#             # populate column J
+#             if not isPOH(r):
+#                 r.append('Tenant Owned')
+#                 # populate column K
+#                 r.append(timesincelastinc(r,'TOH'))
+#                 r.append(isEligible(r,'TOH'))
+#             else:
+#                 r.append('POH')
+#     return data
 
 #Helper function: loop thru data set to create new csv --> export new csv to --> output_path
 def NewCsv(data,path):
@@ -143,7 +150,7 @@ def eligiblePOH(data):
     # title each column
     titles = ['Unit #', '', 'Bd/Ba', 'Tenant', 'Status', 'Move-in', 'Last Increase', '$ Rent', 'Property',
               'Type', 'Days Since Last Increase', 'Eligibility']
-    header = ['*Spreadsheet represents all POH tenants eligible for rent increase on ' + Xmonthsfromnow(2)]
+    header = ['*Spreadsheet represents all POH tenants eligible for rent increase on ' + Xmonthsfromnow(2,dateinput)]
     append_list_as_row(path, header)
     append_list_as_row(path, titles)
     append_list_as_row(path, [])
@@ -156,25 +163,25 @@ def eligiblePOH(data):
     return None
 
 #copied pasta from above
-def eligibleTOH(data):
-    #first, clear the old junk from CSV file
-    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
-    clearCSV(path)
-
-    #title each column
-    titles=['Unit #','','Bd/Ba','Tenant','Status','Move-in','Last Increase','$ Rent','Property',
-            'Type','Days Since Last Increase','Eligibility']
-    header = ['*Spreadsheet represents all TOH tenants eligible for rent increase on ' + Xmonthsfromnow(4)]
-    append_list_as_row(path, header)
-    append_list_as_row(path,titles)
-    append_list_as_row(path,[])
-
-    for p in proplist:
-        append_list_as_row(path,[p])
-        for r in data:
-            if istenant(r) and not isPOH(r) and isEligible(r,'TOH') == "Is Eligible" and r[8] in p:
-                append_list_as_row(path,r)
-    return None
+# def eligibleTOH(data):
+#     #first, clear the old junk from CSV file
+#     path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+#     clearCSV(path)
+#
+#     #title each column
+#     titles=['Unit #','','Bd/Ba','Tenant','Status','Move-in','Last Increase','$ Rent','Property',
+#             'Type','Days Since Last Increase','Eligibility']
+#     header = ['*Spreadsheet represents all TOH tenants eligible for rent increase on ' + Xmonthsfromnow(4)]
+#     append_list_as_row(path, header)
+#     append_list_as_row(path,titles)
+#     append_list_as_row(path,[])
+#
+#     for p in proplist:
+#         append_list_as_row(path,[p])
+#         for r in data:
+#             if istenant(r) and not isPOH(r) and isEligible(r,'TOH') == "Is Eligible" and r[8] in p:
+#                 append_list_as_row(path,r)
+#     return None
 
 def append_list_as_row(file_name, list_of_elem):
     # Open file in append mode
@@ -190,12 +197,20 @@ def sendemail():
     TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
     eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
-    emailtitle = 'POH Residents Eligible for Rent Increase On '+Xmonthsfromnow(2)
-    emailbody = '''This is an automated email detailing:
-    (A) POH tenants eligible for rent increase 2 months from now ('''+ Xmonthsfromnow(2)+''') -- must give 30 day notice. \n 
-    (B) TOH tenants eligible for rent increase 4 months from now ('''+ Xmonthsfromnow(4)+''') -- must give 90 day notice.'''
+    emailtitle = 'Rent Increases'
+    emailbody = '''This is a monthly automated email regarding rent increases:'''
+    POHbody = '''\n(1) We need to pass out 30 day notices for POH Tenants eligible for rent increase on ''' + Xmonthsfromnow(2,dateinput)+" (see 'eligiblePOH.csv' for a list of tenants needing increases)"
+    #if it is June 1st or it is Nov 1st, spit out eligible POH list
+    if dateinput.month == 6 or dateinput.month==11:
+        emailbody = emailbody + POHbody
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody, [POHoutput, eligiblePOH])
+    else:
+        emailbody += '\n (1) No POH rent increases to pass out this month!'
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody)
 
-    ezgmail.send('vchen2120@gmail.com',emailtitle,emailbody,[POHoutput,TOHoutput,eligiblePOH,eligibleTOH])
+    #(B) TOH tenants eligible for rent increase 4 months from now ('''+ Xmonthsfromnow(4)+''') -- must give 90 day notice.'''
+
+
 
 
 #scrape victoreceipts@gmail.com for AppFolio's daily automated email
@@ -233,15 +248,15 @@ output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
 NewCsv(POH_data, output_path)
 
 #Create TOHoutput.csv
-TOH_data = alterTOH(GetData())
-output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
-NewCsv(TOH_data, output_path)
+# TOH_data = alterTOH(GetData())
+# output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+# NewCsv(TOH_data, output_path)
 
 # Create eligiblePOH.csv
 eligiblePOH(POH_data)
 
 #create eligibleTOH.csv
-eligibleTOH(TOH_data)
+# eligibleTOH(TOH_data)
 
 #send the email to all prop managers
 sendemail()
