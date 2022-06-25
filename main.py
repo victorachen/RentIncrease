@@ -1,16 +1,8 @@
-#immediate: work in Westwind in TOH_Dic !!!
-#write function: to convert "2023-10-01" to "October 2023"
-#get rid of that pesky "&" at the end of (2) 
-
-#Hitching Post -- 7/1/2023
-#Wishing Well -- 10/1/2022
-#Holiday -- 2/1/2022
-#Mt Vista -- 2/1/2022
-#Crestview -- 1/1/2022
+#ready to go: test out a bunch of diff dates, then set dateinput to today()
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2023,10,1)
+dateinput = datetime.date(2022,7,1)
 
 from datetime import date, datetime
 today = date.today()
@@ -32,6 +24,16 @@ def Xmonthsfromnow(x,dateinput):
     year = this_year + (this_month + inc - 1) // 12
     #return the end result as a string, so we can compare with getstrtoday()
     combined = str(month)+'/'+str(day)+'/'+str(year)
+    return combined
+
+#convert "2023-10-01" to string "October 2023"
+def convertdate(date):
+    D = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun',
+                 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
+    month = date.month
+    mapped_month = D[month]
+    year = date.year
+    combined = mapped_month + " "+ str(year)
     return combined
 
 # rentincreasedate = Xmonthsfromnow(2)
@@ -197,33 +199,45 @@ def append_list_as_row(file_name, list_of_elem):
 
 #return the text of the email body as a string
 def emailbody():
-    emailbody = '''This is an automated email regarding rent increases for the month of '''+ str(dateinput)
+    emailbody = '''Rent increases we need to pass out this month ('''+ convertdate(dateinput) + '):\n'
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if dateinput.month == 6 or dateinput.month==11:
-        POHbody = '''\n(1) Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out for POH. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- see 'eligiblePOH.csv' for a list of POH tenants needing increases\n"
+        POHbody = '''(1) Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out for POH. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- see 'eligiblePOH.csv' for a list of POH tenants needing increases\n"
     else:
-        POHbody = '\n (1) No POH rent increases to pass out this month!\n'
+        POHbody = '(1) No POH rent increases to pass out this month!\n'
 
     # Dictionary representing which months can push out Rent Increase for TOH
-    TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1}
+    TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':11}
     #Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
-    TOH_Dic_90days = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9}
+    TOH_Dic_90days = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':7}
 
     ifTOHno = '\n (2) No TOH rent increases to pass out this month!'
-    ifTOHyes = '''needs 90 day notices passed out this month for TOH. Rent Increase Date: ''' + Xmonthsfromnow(4, dateinput) + "-- see 'eligibleTOH.csv' for a list of TOH tenants needing increases"
+    ifTOHyes = '''90 day notices passed out this month for TOH. Rent Increase Date: ''' + Xmonthsfromnow(4, dateinput) + "-- see 'eligibleTOH.csv' for a list of TOH tenants needing increases"
     TOHbody = '(2) '
+    Tailbody = '''
+----------------------------------------------------------------------------------
+Notes: 
+- POH rent increases take effect twice each year: Feb 1st & August 1st 
+- Annual TOH Increases vary as follows: [Crestview: Jan 1st],[Holiday: Feb 1st],[Mt Vista: Feb 1st],[Hitching: Jul 1st],[Wishing: Oct 1st],[Westwind: Nov 1st]
+*If you see a discrepency, please contact Victor immediately'''
 
     areanyTOHelig4increase = False
+    count = 0
     for prop in TOH_Dic_90days:
         if dateinput.month == TOH_Dic_90days[prop]:
-            TOHbody = TOHbody + prop +' & '
+            TOHbody = TOHbody + prop +', '
             areanyTOHelig4increase = True
+            count+=1
     if areanyTOHelig4increase:
-        TOHbody = TOHbody + ifTOHyes
+        #gotta make sure this is grammatically correct, ya know
+        if count > 1:
+            TOHbody = TOHbody + 'need '+ ifTOHyes
+        if count <=1:
+            TOHbody = TOHbody + 'needs '+ifTOHyes
     else:
         TOHbody = ifTOHno
-    emailbody = emailbody + POHbody+ TOHbody
+    emailbody = emailbody + POHbody+ TOHbody+'\n'+Tailbody
     return emailbody
 
 def sendemail():
