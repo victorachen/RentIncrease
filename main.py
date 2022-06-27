@@ -1,8 +1,9 @@
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
+#play around with the bolding: https://ezgmail.readthedocs.io/en/latest/
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2022,7,1)
+dateinput = datetime.date(2022,10,1)
 
 from datetime import date, datetime
 today = date.today()
@@ -156,7 +157,7 @@ def eligiblePOH(data):
     # title each column
     titles = ['Unit #', '', 'Bd/Ba', 'Tenant', 'Status', 'Move-in', 'Last Increase', '$ Rent', 'Property',
               'Type', 'Days Since Last Increase', 'Eligibility']
-    header = ['*Spreadsheet represents all POH tenants eligible for rent increase on ' + Xmonthsfromnow(2,dateinput)]
+    header = ['*Today is '+convertdate(dateinput)+'; below shows all POH tenants eligible for increase 90 days from now on ' + Xmonthsfromnow(2,dateinput)]
     append_list_as_row(path, header)
     append_list_as_row(path, titles)
     append_list_as_row(path, [])
@@ -168,7 +169,20 @@ def eligiblePOH(data):
                 append_list_as_row(path,r)
     return None
 
-#copied pasta from above
+# Dictionary representing which months can push out Rent Increase for TOH
+TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':11}
+#Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
+TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':7}
+
+#helper for EligibleTOH() -- return list (eligibleTOHproplist) of props where it is time (this month) to pass out 90 days
+def EligTOHlist():
+    L = []
+    for prop in TOH_Dic_90daysprior:
+        if TOH_Dic_90daysprior[prop] == dateinput.month:
+            L.append(prop)
+    return L
+
+#create CSV for eligible TOH residents
 def eligibleTOH(data):
     #first, clear the old junk from CSV file
     path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
@@ -177,16 +191,19 @@ def eligibleTOH(data):
     #title each column
     titles=['Unit #','','Bd/Ba','Tenant','Status','Move-in','Last Increase','$ Rent','Property',
             'Type','Days Since Last Increase','Eligibility']
-    header = ['*Spreadsheet represents all TOH tenants eligible for rent increase on ' + Xmonthsfromnow(4,dateinput)]
+    header = ['*Today is '+convertdate(dateinput)+'; below shows all TOH tenants eligible for increase 90 days from now on' + Xmonthsfromnow(4,dateinput)]
     append_list_as_row(path, header)
     append_list_as_row(path,titles)
     append_list_as_row(path,[])
 
-    for p in proplist:
-        append_list_as_row(path,[p])
-        for r in data:
-            if istenant(r) and not isPOH(r) and r[8] in p:
-                append_list_as_row(path,r)
+    for p in TOH_Dic:
+        if p in EligTOHlist():
+            append_list_as_row(path, [p])
+            for r in data:
+                if istenant(r) and not isPOH(r) and r[8] in p:
+                    append_list_as_row(path,r)
+        else:
+            append_list_as_row(path, [p+': No TOH Increases For This Month!'])
     return None
 
 def append_list_as_row(file_name, list_of_elem):
@@ -197,39 +214,39 @@ def append_list_as_row(file_name, list_of_elem):
         # Add contents of list as last row in the csv file
         csv_writer.writerow(list_of_elem)
 
+#helper for emailbody()
+def areanyTOHeligible4increase():
+    if dateinput.month in TOH_Dic_90daysprior.values():
+        return True
+    return False
+#helpers for emailbody()
+def areanyPOHeligible4increase():
+    if dateinput.month == 6 or dateinput.month == 11:
+        return True
+    return False
+
+
 #return the text of the email body as a string
 def emailbody():
     emailbody = '''Rent increases we need to pass out this month ('''+ convertdate(dateinput) + '):\n'
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
-    if dateinput.month == 6 or dateinput.month==11:
-        POHbody = '''(1) Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out for POH. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- see 'eligiblePOH.csv' for a list of POH tenants needing increases\n"
+    if areanyPOHeligible4increase():
+        POHbody = '''(1) POH: Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- see 'eligiblePOH.csv' for a list of POH tenants needing increases\n"
     else:
-        POHbody = '(1) No POH rent increases to pass out this month!\n'
+        POHbody = '(1) POH: No increases to pass out this month!\n'
 
-    # Dictionary representing which months can push out Rent Increase for TOH
-    TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':11}
-    #Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
-    TOH_Dic_90days = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':7}
+    ifTOHno = '\n (2) TOH: No increases to pass out this month!'
+    ifTOHyes = '''90 day notices passed out this month -- Increase To Take Effect ''' + Xmonthsfromnow(4, dateinput) + '''
+(See 'eligibleTOH.csv' for a list of TOH tenants needing increases)'''
+    TOHbody = '(2) TOH: '
 
-    ifTOHno = '\n (2) No TOH rent increases to pass out this month!'
-    ifTOHyes = '''90 day notices passed out this month for TOH. Rent Increase Date: ''' + Xmonthsfromnow(4, dateinput) + "-- see 'eligibleTOH.csv' for a list of TOH tenants needing increases"
-    TOHbody = '(2) '
-    Tailbody = '''
-----------------------------------------------------------------------------------
-Notes: 
-- POH rent increases take effect twice each year: Feb 1st & August 1st 
-- Annual TOH Increases vary as follows: [Crestview: Jan 1st],[Holiday: Feb 1st],[Mt Vista: Feb 1st],[Hitching: Jul 1st],[Wishing: Oct 1st],[Westwind: Nov 1st]
-*If you see a discrepency, please contact Victor immediately'''
-
-    areanyTOHelig4increase = False
     count = 0
-    for prop in TOH_Dic_90days:
-        if dateinput.month == TOH_Dic_90days[prop]:
+    for prop in TOH_Dic_90daysprior:
+        if dateinput.month == TOH_Dic_90daysprior[prop]:
             TOHbody = TOHbody + prop +', '
-            areanyTOHelig4increase = True
             count+=1
-    if areanyTOHelig4increase:
+    if areanyTOHeligible4increase():
         #gotta make sure this is grammatically correct, ya know
         if count > 1:
             TOHbody = TOHbody + 'need '+ ifTOHyes
@@ -237,6 +254,20 @@ Notes:
             TOHbody = TOHbody + 'needs '+ifTOHyes
     else:
         TOHbody = ifTOHno
+
+    Tailbody = '''
+----------------------------------------------------------------------------------
+Notes: 
+- POH rent increases take effect twice each year: Feb 1st & August 1st 
+- Annual TOH Increases vary as follows: 
+    Crestview: Jan 1st,
+    Holiday: Feb 1st,
+    Mt Vista: Feb 1st,
+    Hitching: Jul 1st,
+    Wishing: Oct 1st,
+    Westwind: Nov 1st
+*If you see any discrepencies, please contact Victor immediately'''
+
     emailbody = emailbody + POHbody+ TOHbody+'\n'+Tailbody
     return emailbody
 
@@ -245,20 +276,18 @@ def sendemail():
     TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
     eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
-    emailtitle = 'Rent Increases'
-    #if it is June 1st or it is Nov 1st, spit out eligible POH list
-    if dateinput.month == 6 or dateinput.month==11:
-        emailbody = emailbody + POHbody
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody, [POHoutput, eligiblePOH])
-    else:
-        emailbody += '\n (1) No POH rent increases to pass out this month!'
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody)
+    emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
-    #(B) TOH tenants eligible for rent increase 4 months from now ('''+ Xmonthsfromnow(4)+''') -- must give 90 day notice.'''
-
-
-
-
+    if areanyPOHeligible4increase() and areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH,TOHoutput,eligibleTOH])
+    if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH])
+    if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [TOHoutput, eligibleTOH])
+    if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody())
+    print( 'Email Sent!')
+    return None
 
 #scrape victoreceipts@gmail.com for AppFolio's daily automated email
 def DownloadRentRoll():
@@ -306,5 +335,4 @@ eligiblePOH(POH_data)
 eligibleTOH(TOH_data)
 
 #send the email to all prop managers
-# sendemail()
-print(emailbody())
+sendemail()
