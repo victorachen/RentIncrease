@@ -5,6 +5,8 @@
 import datetime
 dateinput = datetime.date(2022,10,1)
 
+from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
+from tabula import read_pdf
 from datetime import date, datetime
 today = date.today()
 # print(dateinput==today)
@@ -258,6 +260,8 @@ def emailbody():
     Tailbody = '''
 ----------------------------------------------------------------------------------
 Notes: 
+- When passing out rent increases, please make sure to also update AppFolio so that
+  each tenant's monthly reoccuring charges reflect the updated rent amount!
 - POH rent increases take effect twice each year: Feb 1st & August 1st 
 - Annual TOH Increases vary as follows: 
     Crestview: Jan 1st,
@@ -334,5 +338,56 @@ eligiblePOH(POH_data)
 #create eligibleTOH.csv
 eligibleTOH(TOH_data)
 
+#For TOH - Create a combined PDF for managers to fill out
+def fill90daynotices():
+    d = {'Tenant':'VChen','SpNum':'','Address':'','IncrDate':'','Year':'',
+        'OrigRent':'','NewRent':'','Total_Incr':'','Date':'','ManagerName':''
+    }
+    #create a list of output PDFs, one for each complex
+    ListOfOutputPaths = []
+    for i in EligTOHlist():
+        ListOfOutputPaths.append(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs'+'\90daynotices_'+i+'.pdf')
+    #(1) copy the page
+    #(2) fill the page
+    #(3) save the page in indiv_notices
+    #(4) ... after looping (1-3) combine all pages in indiv_notices
+    #(5) erase everything in indiv_notices
+
+    #for each property, has its own PDF
+    # for outputpath in ListOfOutputPaths:
+    inputpath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
+
+    #First: Dump everything into indiv_notices folder
+    pdfs = []
+    for x in range(10):
+        reader = PdfFileReader(inputpath)
+        writer = PdfFileWriter()
+        pageobj = reader.getPage(0)
+        writer.addPage(pageobj)
+        writer.updatePageFormFieldValues(
+            writer.getPage(0), {'Tenant': 'Victorino'}
+        )
+        outputpath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Sp'+str(x)+'.pdf'
+        pdfs.append(outputpath)
+        pdfOutputFile = open(outputpath,'wb')
+        writer.write(pdfOutputFile)
+        pdfOutputFile.close()
+
+    #Second: combine everything in indiv_notices folder
+    # merger = PdfFileMerger()
+    from pdf2image import convert_from_path
+    from PIL import Image
+    for pdf in pdfs:
+        images = convert_from_path(pdf)
+        im1 = images[0]
+        images.pop(0)
+
+        pdf1_filename = str(pdfs.index(pdf))+'.pdf'
+        im1.save(pdf1_filename, "PDF", resolution=100.0, save_all=True, append_images=images)
+        # merger.append(PdfFileReader(open(pdf,'rb')))
+    # merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\combined.pdf')
+
+fill90daynotices()
+
 #send the email to all prop managers
-sendemail()
+# sendemail()
