@@ -1,9 +1,9 @@
+#next: add the PDFs to the email, clean up things on PDF (like who is the manager, prop address, stuff like that)
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
-#play around with the bolding: https://ezgmail.readthedocs.io/en/latest/
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2022,7,1)
+dateinput = datetime.date(2022,3,1)
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -55,6 +55,13 @@ def abbr_prop(longpropname):
         if i in longpropname:
             return i
     return 'No prop found'
+
+#I have yet to use this! (copied pasta'd from old code)
+# abbreviate name of complex for txt msg. takes in full name of unit & returns abbr unit name string
+    def abbr_complex(complex):
+        d = {'Holiday': 'Hol', 'Mt Vista': 'MtV', 'Westwind': 'West', 'Wilson Gardens': 'Wilson', 'Crestview': 'Crest', \
+             'Hitching Post': 'HP', 'SFH': 'SFH', 'Patrician': 'Pat', 'Wishing Well': 'Wish'}
+        return d[complex]
 
 #given a list, return whether (that row) is a tenant
 def istenant(r):
@@ -151,6 +158,78 @@ def clearCSV(path):
     f = open(filename, "w+")
     f.close()
 
+#Takes in a row r (as a list), and maps elements of r into PDF
+#create a crap ton of inked PDF drawings, combining them into one PDF
+def ink_drawing(r):
+    d = {'Tenant': r[3], 'SpNum': r[0], 'Address': r[8],
+         'IncrDate': Xmonthsfromnow(4,dateinput), 'Year': Xmonthsfromnow(4,dateinput)[-2:],
+         'OrigRent': r[7], 'Date': str(dateinput)[-5:], 'ManagerName': 'Brian Nguyen'
+         }
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+    can.drawString(100, 623, d['Tenant'])
+    can.drawString(158, 597, d['SpNum'])
+    can.drawString(320, 597, d['Address'])
+    can.drawString(265, 530, d['IncrDate'])
+    can.drawString(408, 530, d['Year'])
+    can.drawString(340, 488, d['OrigRent'])
+    # can.drawString(480, 488, d['NewRent'])
+    # can.drawString(500, 380, d['NewRent'])
+    # can.drawString(500, 300, d['NewRent'])
+    can.drawString(400, 125, d['ManagerName'])
+    # can.drawString(80, 423, d['Total_Incr'])
+    can.drawString(330, 172, d['Year'])
+    can.drawString(180, 172, d['Date'])
+    can.save()
+
+    #move to the beginning of the StringIO buffer
+    packet.seek(0)
+
+    # create a new PDF with Reportlab
+    new_pdf = PdfFileReader(packet)
+    # read your existing PDF
+    input_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
+    output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(r[0])+'.pdf'
+
+    existing_pdf = PdfFileReader(open(input_path, "rb"))
+    output = PdfFileWriter()
+    # add the "watermark" (which is the new pdf) on the existing page
+    page = existing_pdf.getPage(0)
+    page.mergePage(new_pdf.getPage(0))
+    output.addPage(page)
+    # finally, write "output" to a real file
+    outputStream = open(output_path, "wb")
+    output.write(outputStream)
+    outputStream.close()
+
+#takes in property name: mapping that prop name to the file name ex) Westwindcombined.pdf
+def combinePDFs(prop,PDFlist):
+    # source_dir = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/indiv_notices/'
+    # merger = PdfFileMerger()
+    #
+    # for item in os.listdir(source_dir):
+    #     if item.endswith('pdf'):
+    #         # print(item)
+    #         merger.append(source_dir + item)
+    #
+    # merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\_'+prop+'_combined.pdf')
+    # merger.close()
+    merger = PdfFileMerger()
+    for SpNum in PDFlist:
+        file = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
+        merger.append(PdfFileReader(open(file, 'rb')))
+    merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\_'+prop+'_combined.pdf')
+    return None
+
+#after combining, delete all the PDFs in the folder (clear the junk)
+def deletePDFs():
+    os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
+    mydir = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices'
+    filelist = [f for f in os.listdir(mydir)]
+    for f in filelist:
+        os.remove(os.path.join(mydir, f))
+    return None
+
 #create CSV for eligible POH residents
 def eligiblePOH(data):
     #first, clear the old junk from CSV file
@@ -201,12 +280,25 @@ def eligibleTOH(data):
 
     for p in TOH_Dic:
         if p in EligTOHlist():
+            #you're doing 2 things at once here and it's getting super confusing
+            PDFlist = []
+
             append_list_as_row(path, [p])
             for r in data:
                 if istenant(r) and not isPOH(r) and r[8] in p:
                     append_list_as_row(path,r)
+                    #create a pdf for every TOH that deserves an increase
+                    ink_drawing(r)
+                    #create a list of PDFs that you want combinePDFs() to glue together
+                    PDFlist.append(r[0])
+
+            # do the PDF business, for properties with TOH increase eligibility
+            combinePDFs(p,PDFlist)
+            deletePDFs()
+
         else:
             append_list_as_row(path, [p+': No TOH Increases For This Month!'])
+
     return None
 
 def append_list_as_row(file_name, list_of_elem):
@@ -242,7 +334,7 @@ def emailbody():
     ifTOHno = '\n (2) <em>TOH</em>:  No increases to pass out this month!<br>'
     ifTOHyes = '''90 day notices passed out this month -- Increase To Take Effect <strong>''' + Xmonthsfromnow(4, dateinput) + '''</strong><br>
 <em>(See 'eligibleTOH.csv' for a list of TOH tenants needing increases)</em><br>'''
-    TOHbody = '(2)<em> TOH<em>: '
+    TOHbody = '(2)<em> TOH</em>: '
 
     count = 0
     for prop in TOH_Dic_90daysprior:
@@ -395,55 +487,5 @@ def fill90daynotices():
 
 # fill90daynotices()
 
-#ink autocad PDF drawing with those sweet, sweet labels on bottom left hand corner
-def ink_drawing():
-    d = {'Tenant': 'VChen', 'SpNum': '50', 'Address': '34184 County Line Rd, Space 99',
-         'IncrDate': '07/01/2022', 'Year': '22',
-         'OrigRent': '700', 'NewRent': '900', 'Total_Incr': '200', 'Date': '05/01/2022', 'ManagerName': 'Brian Nguyen'
-         }
-    packet = io.BytesIO()
-    can = canvas.Canvas(packet, pagesize=letter)
-    can.drawString(100, 623, d['Tenant'])
-    can.drawString(158, 597, d['SpNum'])
-    can.drawString(320, 597, d['Address'])
-    can.drawString(265, 530, d['IncrDate'])
-    can.drawString(408, 530, d['Year'])
-    can.drawString(340, 488, d['OrigRent'])
-    can.drawString(480, 488, d['NewRent'])
-    can.drawString(500, 380, d['NewRent'])
-    can.drawString(500, 300, d['NewRent'])
-    can.drawString(400, 125, d['ManagerName'])
-    can.drawString(80, 423, d['Total_Incr'])
-    can.drawString(330, 172, d['Year'])
-    can.drawString(180, 172, d['Date'])
-    s1 = "Footprint-- "
-    s2 = "Lot-- "
-    s3 = 'Building_SF'
-    can.drawString(10, 40, s1)
-    can.drawString(10, 25, s2)
-    can.drawString(10, 10, s3)
-    can.save()
-
-    #move to the beginning of the StringIO buffer
-    packet.seek(0)
-
-    # create a new PDF with Reportlab
-    new_pdf = PdfFileReader(packet)
-    # read your existing PDF
-    input_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
-    output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Sp0inked.pdf'
-
-    existing_pdf = PdfFileReader(open(input_path, "rb"))
-    output = PdfFileWriter()
-    # add the "watermark" (which is the new pdf) on the existing page
-    page = existing_pdf.getPage(0)
-    page.mergePage(new_pdf.getPage(0))
-    output.addPage(page)
-    # finally, write "output" to a real file
-    outputStream = open(output_path, "wb")
-    output.write(outputStream)
-    outputStream.close()
-
-ink_drawing()
 #send the email to all prop managers
-sendemail()
+# sendemail()
