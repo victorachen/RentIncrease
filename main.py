@@ -1,9 +1,10 @@
 #next: add the PDFs to the email, clean up things on PDF (like who is the manager, prop address, stuff like that)
+#chalk up the second PDF
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2022,3,1)
+dateinput = datetime.date(2023,5,1)
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -79,7 +80,7 @@ def isprop(r):
 #given a list, return whether (that row) is a POH tenant
 def isPOH(r):
     rent = int(r[7].partition('.')[0].replace(',',''))
-    if rent>500:
+    if rent>700:
         return True
     else:
         return False
@@ -163,7 +164,7 @@ def clearCSV(path):
 def ink_drawing(r):
     d = {'Tenant': r[3], 'SpNum': r[0], 'Address': r[8],
          'IncrDate': Xmonthsfromnow(4,dateinput), 'Year': Xmonthsfromnow(4,dateinput)[-2:],
-         'OrigRent': r[7], 'Date': str(dateinput)[-5:], 'ManagerName': 'Brian Nguyen'
+         'OrigRent': r[7], 'Date': str(dateinput)[-5:]
          }
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
@@ -176,7 +177,7 @@ def ink_drawing(r):
     # can.drawString(480, 488, d['NewRent'])
     # can.drawString(500, 380, d['NewRent'])
     # can.drawString(500, 300, d['NewRent'])
-    can.drawString(400, 125, d['ManagerName'])
+    # can.drawString(400, 125, d['ManagerName'])
     # can.drawString(80, 423, d['Total_Incr'])
     can.drawString(330, 172, d['Year'])
     can.drawString(180, 172, d['Date'])
@@ -218,13 +219,13 @@ def combinePDFs(prop,PDFlist):
     for SpNum in PDFlist:
         file = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
         merger.append(PdfFileReader(open(file, 'rb')))
-    merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\_'+prop+'_combined.pdf')
+    merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email\_'+prop+'_letters.pdf')
     return None
 
 #after combining, delete all the PDFs in the folder (clear the junk)
-def deletePDFs():
-    os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
-    mydir = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices'
+def DeleteEverythingInFolder(path):
+    os.chdir(path)
+    mydir = path
     filelist = [f for f in os.listdir(mydir)]
     for f in filelist:
         os.remove(os.path.join(mydir, f))
@@ -294,7 +295,7 @@ def eligibleTOH(data):
 
             # do the PDF business, for properties with TOH increase eligibility
             combinePDFs(p,PDFlist)
-            deletePDFs()
+            DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
 
         else:
             append_list_as_row(path, [p+': No TOH Increases For This Month!'])
@@ -327,14 +328,14 @@ def emailbody():
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if areanyPOHeligible4increase():
-        POHbody = '''(1) <em>POH</em>: Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- <br><em> see 'eligiblePOH.csv' for a list of POH tenants needing increases</em><br>"
+        POHbody = '''<strong>(1)</strong> <em>POH</em>: <strong> Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
     else:
-        POHbody = '(1)<em> POH</em>: No increases to pass out this month!<br>'
+        POHbody = '<strong>(1)</strong> <em> POH</em>: No increases to pass out this month!<br>'
 
-    ifTOHno = '\n (2) <em>TOH</em>:  No increases to pass out this month!<br>'
+    ifTOHno = '\n <strong>(2) </strong> <em>TOH</em>:  No increases to pass out this month!<br>'
     ifTOHyes = '''90 day notices passed out this month -- Increase To Take Effect <strong>''' + Xmonthsfromnow(4, dateinput) + '''</strong><br>
 <em>(See 'eligibleTOH.csv' for a list of TOH tenants needing increases)</em><br>'''
-    TOHbody = '(2)<em> TOH</em>: '
+    TOHbody = '<strong>(2)</strong> <em> TOH</em>: '
 
     count = 0
     for prop in TOH_Dic_90daysprior:
@@ -371,6 +372,11 @@ def emailbody():
     return emailbody
 
 def sendemail():
+    #first, dump every PDF in the "Attach2Email" folder, into the list of stuff to email
+    PDFs = os.listdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
+    for i in PDFs:
+        PDFs[PDFs.index(i)] = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+i
+    #Now, fpr the rest of the stuff
     POHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
     TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
     eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
@@ -378,13 +384,16 @@ def sendemail():
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
     if areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
     if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH],mimeSubtype='html')
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH],mimeSubtype='html')
     if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [TOHoutput, eligibleTOH],mimeSubtype='html')
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[TOHoutput, eligibleTOH],mimeSubtype='html')
     if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
         ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(),mimeSubtype='html')
+
+    #After sending the email, delete all PDFs (reset for next time)
+    DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
     print( 'Email Sent!')
     return None
 
@@ -433,59 +442,5 @@ eligiblePOH(POH_data)
 #create eligibleTOH.csv
 eligibleTOH(TOH_data)
 
-#For TOH - Create a combined PDF for managers to fill out
-def fill90daynotices():
-    d = {'Tenant':'VChen','SpNum':'','Address':'','IncrDate':'','Year':'',
-        'OrigRent':'','NewRent':'','Total_Incr':'','Date':'','ManagerName':''
-    }
-    #create a list of output PDFs, one for each complex
-    ListOfOutputPaths = []
-    for i in EligTOHlist():
-        ListOfOutputPaths.append(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs'+'\90daynotices_'+i+'.pdf')
-    #(1) copy the page
-    #(2) fill the page
-    #(3) save the page in indiv_notices
-    #(4) ... after looping (1-3) combine all pages in indiv_notices
-    #(5) erase everything in indiv_notices
-
-    #for each property, has its own PDF
-    # for outputpath in ListOfOutputPaths:
-    inputpath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
-
-    #First: Dump everything into indiv_notices folder
-    pdfs = []
-    for x in range(10):
-        reader = PdfFileReader(inputpath)
-        writer = PdfFileWriter()
-        pageobj = reader.getPage(0)
-        writer.addPage(pageobj)
-        writer.updatePageFormFieldValues(
-            writer.getPage(0), {'Tenant': 'Victorino'}
-        )
-        outputpath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Sp'+str(x)+'.pdf'
-        pdfs.append(outputpath)
-        pdfOutputFile = open(outputpath,'wb')
-        writer.write(pdfOutputFile)
-        pdfOutputFile.close()
-
-    #Second: combine everything in indiv_notices folder
-    # merger = PdfFileMerger()
-    from pdf2image import convert_from_path
-    from PIL import Image
-    pop_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\Lib\site-packages\poppler'
-
-    os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\Lib\site-packages\poppler_utils-0.1.0.dist-info')
-    for pdf in pdfs:
-        images = convert_from_path(pdf,poppler_path=pop_path)
-        im1 = images[0]
-        images.pop(0)
-
-        pdf1_filename = str(pdfs.index(pdf))+'.pdf'
-        im1.save(pdf1_filename, "PDF", resolution=100.0, save_all=True, append_images=images)
-        # merger.append(PdfFileReader(open(pdf,'rb')))
-    # merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\combined.pdf')
-
-# fill90daynotices()
-
 #send the email to all prop managers
-# sendemail()
+sendemail()
