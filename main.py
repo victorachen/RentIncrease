@@ -3,17 +3,18 @@
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2022,10,1)
+dateinput = datetime.date(2022,7,1)
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
-from tabula import read_pdf
 from datetime import date, datetime
 today = date.today()
 # print(dateinput==today)
 
-import csv, ezgmail, os
+import csv, ezgmail, os, io
 import os.path
 from csv import writer
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
 ezgmail.init()
 
@@ -172,9 +173,9 @@ def eligiblePOH(data):
     return None
 
 # Dictionary representing which months can push out Rent Increase for TOH
-TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':11}
+TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':7}
 #Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
-TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':7}
+TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':3}
 
 #helper for EligibleTOH() -- return list (eligibleTOHproplist) of props where it is time (this month) to pass out 90 days
 def EligTOHlist():
@@ -230,23 +231,23 @@ def areanyPOHeligible4increase():
 
 #return the text of the email body as a string
 def emailbody():
-    emailbody = '''Rent increases we need to pass out this month ('''+ convertdate(dateinput) + '):\n'
+    emailbody = '''<p><u>Rent increases we need to pass out this month <strong>('''+ convertdate(dateinput) + ')</strong>:<br></u></p>'
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if areanyPOHeligible4increase():
-        POHbody = '''(1) POH: Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- see 'eligiblePOH.csv' for a list of POH tenants needing increases\n"
+        POHbody = '''(1) <em>POH</em>: Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind need 30 day notices passed out. Rent Increase Date: ''' + Xmonthsfromnow(2,dateinput)+"-- <br><em> see 'eligiblePOH.csv' for a list of POH tenants needing increases</em><br>"
     else:
-        POHbody = '(1) POH: No increases to pass out this month!\n'
+        POHbody = '(1)<em> POH</em>: No increases to pass out this month!<br>'
 
-    ifTOHno = '\n (2) TOH: No increases to pass out this month!'
-    ifTOHyes = '''90 day notices passed out this month -- Increase To Take Effect ''' + Xmonthsfromnow(4, dateinput) + '''
-(See 'eligibleTOH.csv' for a list of TOH tenants needing increases)'''
-    TOHbody = '(2) TOH: '
+    ifTOHno = '\n (2) <em>TOH</em>:  No increases to pass out this month!<br>'
+    ifTOHyes = '''90 day notices passed out this month -- Increase To Take Effect <strong>''' + Xmonthsfromnow(4, dateinput) + '''</strong><br>
+<em>(See 'eligibleTOH.csv' for a list of TOH tenants needing increases)</em><br>'''
+    TOHbody = '(2)<em> TOH<em>: '
 
     count = 0
     for prop in TOH_Dic_90daysprior:
         if dateinput.month == TOH_Dic_90daysprior[prop]:
-            TOHbody = TOHbody + prop +', '
+            TOHbody = TOHbody + '<strong>'+ prop + '</strong>'+', '
             count+=1
     if areanyTOHeligible4increase():
         #gotta make sure this is grammatically correct, ya know
@@ -258,19 +259,21 @@ def emailbody():
         TOHbody = ifTOHno
 
     Tailbody = '''
-----------------------------------------------------------------------------------
-Notes: 
-- When passing out rent increases, please make sure to also update AppFolio so that
-  each tenant's monthly reoccuring charges reflect the updated rent amount!
-- POH rent increases take effect twice each year: Feb 1st & August 1st 
-- Annual TOH Increases vary as follows: 
-    Crestview: Jan 1st,
-    Holiday: Feb 1st,
-    Mt Vista: Feb 1st,
-    Hitching: Jul 1st,
-    Wishing: Oct 1st,
-    Westwind: Nov 1st
-*If you see any discrepencies, please contact Victor immediately'''
+<p><u><strong>Notes: </strong></u><br><ul>
+<li>When passing out rent increases, please make sure to also <strong> update AppFolio</strong>, so that
+  each tenant's monthly reoccuring charges reflect the updated rent amount!</li>
+<li>POH rent increases take effect twice each year: Feb 1st & August 1st</li>
+<li>Annual TOH Increases take effect on the following dates: 
+         <ul>
+         <li> Crestview: Jan 1st</li> 
+         <li> Holiday: Feb 1st</li>
+         <li> Mt Vista: Feb 1st</li>
+         <li> Hitching: Jul 1st</li>
+        <li>  Westwind: July 1st</li>
+         <li> Wishing: Oct 1st</li>
+         </ul>
+         </ul>
+*If you see any discrepencies, please call Victor</p>'''
 
     emailbody = emailbody + POHbody+ TOHbody+'\n'+Tailbody
     return emailbody
@@ -283,13 +286,13 @@ def sendemail():
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
     if areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH,TOHoutput,eligibleTOH])
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
     if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH])
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [POHoutput, eligiblePOH],mimeSubtype='html')
     if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [TOHoutput, eligibleTOH])
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), [TOHoutput, eligibleTOH],mimeSubtype='html')
     if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody())
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(),mimeSubtype='html')
     print( 'Email Sent!')
     return None
 
@@ -377,8 +380,11 @@ def fill90daynotices():
     # merger = PdfFileMerger()
     from pdf2image import convert_from_path
     from PIL import Image
+    pop_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\Lib\site-packages\poppler'
+
+    os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\Lib\site-packages\poppler_utils-0.1.0.dist-info')
     for pdf in pdfs:
-        images = convert_from_path(pdf)
+        images = convert_from_path(pdf,poppler_path=pop_path)
         im1 = images[0]
         images.pop(0)
 
@@ -387,7 +393,57 @@ def fill90daynotices():
         # merger.append(PdfFileReader(open(pdf,'rb')))
     # merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\combined.pdf')
 
-fill90daynotices()
+# fill90daynotices()
 
+#ink autocad PDF drawing with those sweet, sweet labels on bottom left hand corner
+def ink_drawing():
+    d = {'Tenant': 'VChen', 'SpNum': '50', 'Address': '34184 County Line Rd, Space 99',
+         'IncrDate': '07/01/2022', 'Year': '22',
+         'OrigRent': '700', 'NewRent': '900', 'Total_Incr': '200', 'Date': '05/01/2022', 'ManagerName': 'Brian Nguyen'
+         }
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+    can.drawString(100, 623, d['Tenant'])
+    can.drawString(158, 597, d['SpNum'])
+    can.drawString(320, 597, d['Address'])
+    can.drawString(265, 530, d['IncrDate'])
+    can.drawString(408, 530, d['Year'])
+    can.drawString(340, 488, d['OrigRent'])
+    can.drawString(480, 488, d['NewRent'])
+    can.drawString(500, 380, d['NewRent'])
+    can.drawString(500, 300, d['NewRent'])
+    can.drawString(400, 125, d['ManagerName'])
+    can.drawString(80, 423, d['Total_Incr'])
+    can.drawString(330, 172, d['Year'])
+    can.drawString(180, 172, d['Date'])
+    s1 = "Footprint-- "
+    s2 = "Lot-- "
+    s3 = 'Building_SF'
+    can.drawString(10, 40, s1)
+    can.drawString(10, 25, s2)
+    can.drawString(10, 10, s3)
+    can.save()
+
+    #move to the beginning of the StringIO buffer
+    packet.seek(0)
+
+    # create a new PDF with Reportlab
+    new_pdf = PdfFileReader(packet)
+    # read your existing PDF
+    input_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
+    output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Sp0inked.pdf'
+
+    existing_pdf = PdfFileReader(open(input_path, "rb"))
+    output = PdfFileWriter()
+    # add the "watermark" (which is the new pdf) on the existing page
+    page = existing_pdf.getPage(0)
+    page.mergePage(new_pdf.getPage(0))
+    output.addPage(page)
+    # finally, write "output" to a real file
+    outputStream = open(output_path, "wb")
+    output.write(outputStream)
+    outputStream.close()
+
+ink_drawing()
 #send the email to all prop managers
-# sendemail()
+sendemail()
