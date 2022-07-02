@@ -1,10 +1,10 @@
 #next: add the PDFs to the email, clean up things on PDF (like who is the manager, prop address, stuff like that)
-#chalk up the second PDF
+#chalk up the second PDF: work on TOHdicCreator() and cityformpdf()
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 #after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
-dateinput = datetime.date(2023,5,1)
+dateinput = datetime.date(2023,10,1)
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -59,10 +59,10 @@ def abbr_prop(longpropname):
 
 #I have yet to use this! (copied pasta'd from old code)
 # abbreviate name of complex for txt msg. takes in full name of unit & returns abbr unit name string
-    def abbr_complex(complex):
-        d = {'Holiday': 'Hol', 'Mt Vista': 'MtV', 'Westwind': 'West', 'Wilson Gardens': 'Wilson', 'Crestview': 'Crest', \
-             'Hitching Post': 'HP', 'SFH': 'SFH', 'Patrician': 'Pat', 'Wishing Well': 'Wish'}
-        return d[complex]
+def abbr_complex(complex):
+    d = {'Holiday': 'Hol', 'Mt Vista': 'MtV', 'Westwind': 'West', 'Wilson Gardens': 'Wilson', 'Crestview': 'Crest', \
+        'Hitching Post': 'HP', 'SFH': 'SFH', 'Patrician': 'Pat', 'Wishing Well': 'Wish'}
+    return d[complex]
 
 #given a list, return whether (that row) is a tenant
 def istenant(r):
@@ -159,8 +159,8 @@ def clearCSV(path):
     f = open(filename, "w+")
     f.close()
 
-#Takes in a row r (as a list), and maps elements of r into PDF
-#create a crap ton of inked PDF drawings, combining them into one PDF
+#Takes in a row r (as a list), and maps elements of r into "90dayempty.pdf"
+#create a crap ton of inked PDF drawings from input file "90dayempty.pdf", combining them into one PDF
 def ink_drawing(r):
     d = {'Tenant': r[3], 'SpNum': r[0], 'Address': r[8],
          'IncrDate': Xmonthsfromnow(4,dateinput), 'Year': Xmonthsfromnow(4,dateinput)[-2:],
@@ -419,6 +419,37 @@ def GetData():
     data = list(reader)
     return data
 
+#Takes in data, and spits out list of dictionaries, one dictionary for each eligibleTOHproperty
+#ie) [Westwind_TOH_Dic, Hitching_TOH_Dic]
+#where Holiday_TOH_Dic = {'Holiday':'cityformpdfhelper','5':['Liliana Macias','316.95']}
+#(Helper function for cityformpdf()
+def CityFormPdfHelper(data):
+    ListOfDics = []
+    for p in TOH_Dic:
+        if p in EligTOHlist():
+            #create a sep dictionary for each prop
+            Dic = {}
+            Dic[p] = 'cityformpdfhelper'
+            for r in data:
+                if istenant(r) and not isPOH(r) and r[8] in p:
+                    Dic[r[0]] = [r[3],r[7]]
+            #Add the Dic to the ListofDics
+            ListOfDics.append(Dic)
+    return ListOfDics
+
+#Fill out "CityFormEmpty.pdf"
+def cityformpdf():
+    ListOfDics = CityFormPdfHelper(alterTOH(GetData()))
+    for complex in ListOfDics:
+        for possible in EligTOHlist():
+            if possible in complex:
+                #(1)create a PDF from the template PDF, titled "Holiday"
+                #(2) fill out that PDF from contents in "complex" 
+                print(possible)
+    print(ListOfDics)
+    return None
+cityformpdf()
+
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
 fname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
 if os.path.isfile(fname):
@@ -443,4 +474,4 @@ eligiblePOH(POH_data)
 eligibleTOH(TOH_data)
 
 #send the email to all prop managers
-sendemail()
+# sendemail()
