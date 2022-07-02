@@ -1,7 +1,6 @@
-#next: add the PDFs to the email, clean up things on PDF (like who is the manager, prop address, stuff like that)
-#chalk up the second PDF: work on TOHdicCreator() and cityformpdf()
+#work on line 50
+#everything is pretty much done, just clean up things on PDF (like who is the manager, prop address, stuff like that)
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
-#after: write a separate script to generate PDF's of rent increase letters for Resident Owned Homes
 
 import datetime
 dateinput = datetime.date(2023,10,1)
@@ -44,6 +43,19 @@ def convertdate(date):
 # rentincreasedate = Xmonthsfromnow(2)
 proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
          'Hitching Post', 'Patrician', 'Wishing Well', 'SFH']
+
+#2 arguments: (1) property - ie) 'Holiday' and (2) attribute - ie)'Park Name'
+#(1) Park Name (2) LLC (3) Number of Spaces
+def PropertyAttributeMapper(property,attribute):
+    d = {
+        {'Holiday': {'Park Name':'Holiday Rancho', 'LLC':'Holiday Rancho Mobile Home Park, LLC','Num_Spaces': 110}},
+        {'Mt Vista': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
+        {'Westwind': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
+        {'Crestview': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
+        {'Hitching Post': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
+        {'Wishing Well': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}}
+    }
+    return d[property][attribute]
 
 #given a property (string), abbreviate it (or group it into broader category [like 'SFH'])
 def abbr_prop(longpropname):
@@ -432,21 +444,72 @@ def CityFormPdfHelper(data):
             Dic[p] = 'cityformpdfhelper'
             for r in data:
                 if istenant(r) and not isPOH(r) and r[8] in p:
-                    Dic[r[0]] = [r[3],r[7]]
+                    Dic[r[0]] = [r[0],r[3],r[7]]
             #Add the Dic to the ListofDics
             ListOfDics.append(Dic)
     return ListOfDics
 
 #Fill out "CityFormEmpty.pdf"
 def cityformpdf():
+
+    #write whatever is in Dictionary "d" to CityFormpdf
+    def pdfwriter(prop, d):
+        emptypath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\CityFormEmpty.pdf'
+        outputpath = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+abbr_complex(prop)+'_CityForm.pdf'
+        reader = PdfFileReader(emptypath)
+        writer = PdfFileWriter()
+        fields = reader.getFields()
+        page0 = reader.pages[0]
+        page1 = reader.pages[1]
+        page2 = reader.pages[2]
+        page3 = reader.pages[3]
+        page4 = reader.pages[4]
+        page5 = reader.pages[5]
+        writer.addPage(page0)
+        writer.addPage(page1)
+        writer.addPage(page2)
+        writer.addPage(page3)
+        writer.addPage(page4)
+        writer.addPage(page5)
+        # Now you add your data to the forms!
+        for x in d:
+            for p in range(6):
+                writer.updatePageFormFieldValues(
+                    writer.getPage(p), {x: d[x]})
+        # write "output" to PyPDF2-output.pdf
+        with open(outputpath, "wb") as output_stream:
+            writer.write(output_stream)
+
     ListOfDics = CityFormPdfHelper(alterTOH(GetData()))
-    for complex in ListOfDics:
-        for possible in EligTOHlist():
-            if possible in complex:
-                #(1)create a PDF from the template PDF, titled "Holiday"
-                #(2) fill out that PDF from contents in "complex" 
-                print(possible)
-    print(ListOfDics)
+    #where complexdic is dictionary of "Holiday" or "MtV" that has all the TOH unit data
+    for complexdic in ListOfDics:
+        for possiblecomplex in EligTOHlist():
+            if possiblecomplex in complexdic:
+                #sigh, create yet another dictionary that maps to "CityFormEmptyl.pdf"
+                d = {}
+                count = 0
+                for unit in complexdic:
+                    if unit not in proplist:
+                        count+= 1
+                        d["S"+str(count)] = complexdic[unit][0]
+                        d["T" + str(count)] = complexdic[unit][1]
+                        d["R" + str(count)] = complexdic[unit][2]
+
+                #Hard Code Other Stuff into D
+                #to do: map complex to (1) address, (2) llc, (3) total spaces, (4) total_toh_spaces
+                d['ParkName'] = possiblecomplex
+                d['Full_Address'] = 'Yucaipa, CA 92399'
+                d['Day'] = str(datetime.today().day)
+                d['Month'] = ''.join([i for i in convertdate(datetime.today()) if not i.isdigit()])
+                d['Year'] = str(datetime.today().year)[-2:]
+                d['LLC'] = ''
+                d['Short_Address'] = ''
+                d['total_park_spaces'] = ''
+                d['total_toh_spaces'] = str(count)
+                d['curr_incr'] = str(Xmonthsfromnow(4, dateinput))
+
+                pdfwriter(possiblecomplex,d)
+                print(d)
     return None
 cityformpdf()
 
