@@ -3,7 +3,7 @@
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
-dateinput = datetime.date(2023,10,1)
+dateinput = datetime.date.today()
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -48,12 +48,12 @@ proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
 #(1) Park Name (2) LLC (3) Number of Spaces
 def PropertyAttributeMapper(property,attribute):
     d = {
-        {'Holiday': {'Park Name':'Holiday Rancho', 'LLC':'Holiday Rancho Mobile Home Park, LLC','Num_Spaces': 110}},
-        {'Mt Vista': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
-        {'Westwind': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
-        {'Crestview': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
-        {'Hitching Post': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}},
-        {'Wishing Well': {'Park Name': 'Holiday Rancho', 'LLC': 'Holiday Rancho Mobile Home Park, LLC', 'Num_Spaces': 110}}
+        'Holiday': {'Park Name':'Holiday Rancho', 'LLC':'Holiday Rancho Mobile Home Park, LLC','Num_Spaces': 128,'Address':'34184 County Line Rd'},
+        'Mt Vista': {'Park Name': 'Mt Vista', 'LLC': 'Mount Vista, LLC', 'Num_Spaces': 59,'Address':'13061 2nd St'},
+        'Westwind': {'Park Name': 'Westwind Estates', 'LLC': 'Yucaipa Westwind Estates, LLC', 'Num_Spaces': 87,'Address':'12380 4th St'},
+        'Crestview': {'Park Name': 'Crestview', 'LLC': 'Yucaipa Crestview, LLC', 'Num_Spaces': 55, 'Address':'12821 4th St'},
+        'Hitching Post': {'Park Name': 'Hitching Post', 'LLC': 'Hitching Post Mobile Home Park, LLC', 'Num_Spaces': 111, 'Address':'34642 Yucaipa Blvd'},
+        'Wishing Well': {'Park Name': 'Wishing Well', 'LLC': 'Wishing Well Mobile Home Park, LLC', 'Num_Spaces': 73, 'Address':'13063 5th St'}
     }
     return d[property][attribute]
 
@@ -174,7 +174,7 @@ def clearCSV(path):
 #Takes in a row r (as a list), and maps elements of r into "90dayempty.pdf"
 #create a crap ton of inked PDF drawings from input file "90dayempty.pdf", combining them into one PDF
 def ink_drawing(r):
-    d = {'Tenant': r[3], 'SpNum': r[0], 'Address': r[8],
+    d = {'Tenant': r[3], 'SpNum': r[0], 'Address': PropertyAttributeMapper(r[8],'Address'),
          'IncrDate': Xmonthsfromnow(4,dateinput), 'Year': Xmonthsfromnow(4,dateinput)[-2:],
          'OrigRent': r[7], 'Date': str(dateinput)[-5:]
          }
@@ -184,7 +184,7 @@ def ink_drawing(r):
     can.drawString(158, 597, d['SpNum'])
     can.drawString(320, 597, d['Address'])
     can.drawString(265, 530, d['IncrDate'])
-    can.drawString(408, 530, d['Year'])
+    # can.drawString(408, 530, d['Year'])
     can.drawString(340, 488, d['OrigRent'])
     # can.drawString(480, 488, d['NewRent'])
     # can.drawString(500, 380, d['NewRent'])
@@ -498,16 +498,15 @@ def cityformpdf():
                 #Hard Code Other Stuff into D
                 #to do: map complex to (1) address, (2) llc, (3) total spaces, (4) total_toh_spaces
                 d['ParkName'] = possiblecomplex
-                d['Full_Address'] = 'Yucaipa, CA 92399'
+                d['Full_Address'] = PropertyAttributeMapper(possiblecomplex,'Address')+',Leasing Office, Yucaipa, CA 92399'
                 d['Day'] = str(datetime.today().day)
                 d['Month'] = ''.join([i for i in convertdate(datetime.today()) if not i.isdigit()])
                 d['Year'] = str(datetime.today().year)[-2:]
-                d['LLC'] = ''
-                d['Short_Address'] = ''
-                d['total_park_spaces'] = ''
+                d['LLC'] = PropertyAttributeMapper(possiblecomplex,'LLC')
+                d['Short_Address'] = PropertyAttributeMapper(possiblecomplex,'Address')
+                d['total_park_spaces'] = PropertyAttributeMapper(possiblecomplex,'Num_Spaces')
                 d['total_toh_spaces'] = str(count)
                 d['curr_incr'] = str(Xmonthsfromnow(4, dateinput))
-
                 pdfwriter(possiblecomplex,d)
                 print(d)
     return None
@@ -537,4 +536,4 @@ eligiblePOH(POH_data)
 eligibleTOH(TOH_data)
 
 #send the email to all prop managers
-# sendemail()
+sendemail()
