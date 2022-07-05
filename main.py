@@ -3,6 +3,7 @@
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
+# dateinput = datetime.date(2022,12,1)
 dateinput = datetime.date.today()
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
@@ -15,7 +16,7 @@ import os.path
 from csv import writer
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
+os.chdir(r'C:\Users\19097\PycharmProjects\rentincrease')
 ezgmail.init()
 
 #return the date 3 months from dateinput
@@ -201,8 +202,8 @@ def ink_drawing(r):
     # create a new PDF with Reportlab
     new_pdf = PdfFileReader(packet)
     # read your existing PDF
-    input_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
-    output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(r[0])+'.pdf'
+    input_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
+    output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(r[0])+'.pdf'
 
     existing_pdf = PdfFileReader(open(input_path, "rb"))
     output = PdfFileWriter()
@@ -229,9 +230,9 @@ def combinePDFs(prop,PDFlist):
     # merger.close()
     merger = PdfFileMerger()
     for SpNum in PDFlist:
-        file = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
+        file = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
         merger.append(PdfFileReader(open(file, 'rb')))
-    merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email\_'+prop+'_letters.pdf')
+    merger.write(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email\_'+prop+'_letters.pdf')
     return None
 
 #after combining, delete all the PDFs in the folder (clear the junk)
@@ -246,7 +247,7 @@ def DeleteEverythingInFolder(path):
 #create CSV for eligible POH residents
 def eligiblePOH(data):
     #first, clear the old junk from CSV file
-    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
+    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     clearCSV(path)
 
     # title each column
@@ -280,7 +281,7 @@ def EligTOHlist():
 #create CSV for eligible TOH residents
 def eligibleTOH(data):
     #first, clear the old junk from CSV file
-    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     clearCSV(path)
 
     #title each column
@@ -307,7 +308,7 @@ def eligibleTOH(data):
 
             # do the PDF business, for properties with TOH increase eligibility
             combinePDFs(p,PDFlist)
-            DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
+            DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
 
         else:
             append_list_as_row(path, [p+': No TOH Increases For This Month!'])
@@ -385,27 +386,29 @@ def emailbody():
 
 def sendemail():
     #first, dump every PDF in the "Attach2Email" folder, into the list of stuff to email
-    PDFs = os.listdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
+    PDFs = os.listdir(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
     for i in PDFs:
-        PDFs[PDFs.index(i)] = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+i
+        PDFs[PDFs.index(i)] = 'C:/Users/19097/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+i
     #Now, fpr the rest of the stuff
-    POHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
-    TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
-    eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
-    eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    POHoutput = r'C:\Users\19097\PycharmProjects\rentincrease\venv\POHoutput.csv'
+    TOHoutput = r'C:\Users\19097\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+    eligiblePOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
+    eligibleTOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
-    if areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
-    if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH],mimeSubtype='html')
-    if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[TOHoutput, eligibleTOH],mimeSubtype='html')
-    if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(),mimeSubtype='html')
+    emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','vctrac@gmail.com']
+    for e in emaillist:
+        if areanyPOHeligible4increase() and areanyTOHeligible4increase():
+            ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
+        if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+            ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH],mimeSubtype='html')
+        if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
+            ezgmail.send(e, emailtitle, emailbody(), PDFs+[TOHoutput, eligibleTOH],mimeSubtype='html')
+        if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+            ezgmail.send(e, emailtitle, emailbody(),mimeSubtype='html')
 
     #After sending the email, delete all PDFs (reset for next time)
-    DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
+    DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
     print( 'Email Sent!')
     return None
 
@@ -415,17 +418,17 @@ def DownloadRentRoll():
     mostrecentemail = resultsThreads[0]
 
     #Download the csv into local directory
-    downloadfolder = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv'
+    downloadfolder = r'C:\Users\19097\PycharmProjects\rentincrease\venv'
     mostrecentemail.messages[0].downloadAllAttachments(downloadFolder=downloadfolder)
     #Name the most recently downloaded rent roll (what you did just above) --> "rentroll.csv"
     today = str(date.today()).replace('-','')
-    oldname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
-    newname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
+    oldname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
+    newname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
     os.rename(oldname,newname)
 
 #get data from Rent Roll
 def GetData():
-    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
+    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
     file = open(path)
     reader = csv.reader(file)
     data = list(reader)
@@ -454,8 +457,8 @@ def cityformpdf():
 
     #write whatever is in Dictionary "d" to CityFormpdf
     def pdfwriter(prop, d):
-        emptypath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\CityFormEmpty.pdf'
-        outputpath = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+abbr_complex(prop)+'_CityForm.pdf'
+        emptypath = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\CityFormEmpty.pdf'
+        outputpath = 'C:/Users/19097/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+abbr_complex(prop)+'_CityForm.pdf'
         reader = PdfFileReader(emptypath)
         writer = PdfFileWriter()
         fields = reader.getFields()
@@ -513,7 +516,7 @@ def cityformpdf():
 cityformpdf()
 
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
-fname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
+fname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
 if os.path.isfile(fname):
     os.remove(fname)
 #Then, let's download a fresh rentroll from Appfolio
@@ -521,12 +524,12 @@ DownloadRentRoll()
 
 # Create POHoutput.csv
 POH_data = alterPOH(GetData())
-output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
+output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\POHoutput.csv'
 NewCsv(POH_data, output_path)
 
 #Create TOHoutput.csv
 TOH_data = alterTOH(GetData())
-output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\TOHoutput.csv'
 NewCsv(TOH_data, output_path)
 
 # Create eligiblePOH.csv
