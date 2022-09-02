@@ -308,7 +308,7 @@ def eligibleTOH(data):
 
             # do the PDF business, for properties with TOH increase eligibility
             combinePDFs(p,PDFlist)
-            DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
+            # DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
 
         else:
             append_list_as_row(path, [p+': No TOH Increases For This Month!'])
@@ -341,7 +341,7 @@ def emailbody():
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if areanyPOHeligible4increase():
-        POHbody = '''<strong>(1)</strong> <em>POH</em>: <strong> Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
+        POHbody = '''<strong>(1)</strong> <em>POH</cem>: <strong> Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
     else:
         POHbody = '<strong>(1)</strong> <em> POH</em>: No increases to pass out this month!<br>'
 
@@ -379,7 +379,7 @@ def emailbody():
          <li> Wishing: Oct 1st</li>
          </ul>
          </ul>
-*If you see any discrepencies, please call Victor</p>'''
+*If you see any discrepencies, please call Victor (Do Not Reply to This Email)</p>'''
 
     emailbody = emailbody + POHbody+ TOHbody+'\n'+Tailbody
     return emailbody
@@ -396,7 +396,12 @@ def sendemail():
     eligibleTOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
-    emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','vctrac@gmail.com']
+    # emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','amandasteere73@gmail.com',\
+    #              'jessicachowchen@yahoo.com','jianchen20042005@yahoo.com','askrich@verizon.net',\
+    #              'holiday34184@gmail.com','tonymanagercrestview@gmail.com','yucaipawestwind@gmail.com',\
+    #              'hitchingpostmanager@gmail.com','patricianmhp@gmail.com','banningwilsongardens@gmail.com'
+    #              ]
+    emaillist = ['vchen2120@gmail.com']
     for e in emaillist:
         if areanyPOHeligible4increase() and areanyTOHeligible4increase():
             ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
