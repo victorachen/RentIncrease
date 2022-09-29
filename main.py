@@ -1,10 +1,10 @@
-#work on line 50
+#If you need to change months, reference lines 269 and 271
 #everything is pretty much done, just clean up things on PDF (like who is the manager, prop address, stuff like that)
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
-# dateinput = datetime.date(2022,12,1)
-dateinput = datetime.date.today()
+dateinput = datetime.date(2022,10,1)
+# dateinput = datetime.date.today()
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -266,9 +266,9 @@ def eligiblePOH(data):
     return None
 
 # Dictionary representing which months can push out Rent Increase for TOH
-TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':7}
+TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 2,'Westwind':7}
 #Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
-TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':3}
+TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 10,'Westwind':3}
 
 #helper for EligibleTOH() -- return list (eligibleTOHproplist) of props where it is time (this month) to pass out 90 days
 def EligTOHlist():
@@ -368,10 +368,10 @@ def emailbody():
 <p><u><strong>Notes: </strong></u><br><ul>
 <li>When passing out rent increases, please make sure to also <strong> update AppFolio</strong>, so that
   each tenant's monthly reoccuring charges reflect the updated rent amount!</li>
-<li>POH rent increases take effect twice each year: Feb 1st & August 1st</li>
-<li>Annual TOH Increases take effect on the following dates: 
+<li>POH rent increases take effect twice each year-- (1) Feb 1st & (2) August 1st (notices must be passed out 30 days prior)</li>
+<li>Annual TOH Increases take effect on the following dates (notices must be passed out 90 days prior -- but prior to those 90 days, you need to get in contact with the City): 
          <ul>
-         <li> Crestview: Jan 1st</li> 
+         <li> Crestview: Feb 1st</li> 
          <li> Holiday: Feb 1st</li>
          <li> Mt Vista: Feb 1st</li>
          <li> Hitching: Jul 1st</li>
