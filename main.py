@@ -1,10 +1,11 @@
+#As of Jan 19th 2023
 #If you need to change months, reference lines 269 and 271
 #everything is pretty much done, just clean up things on PDF (like who is the manager, prop address, stuff like that)
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
-dateinput = datetime.date(2022,10,1)
-# dateinput = datetime.date.today()
+# dateinput = datetime.date(2022,10,1)
+dateinput = datetime.date.today()
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -396,12 +397,12 @@ def sendemail():
     eligibleTOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
-    # emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','amandasteere73@gmail.com',\
-    #              'jessicachowchen@yahoo.com','jianchen20042005@yahoo.com','askrich@verizon.net',\
-    #              'holiday34184@gmail.com','tonymanagercrestview@gmail.com','yucaipawestwind@gmail.com',\
-    #              'hitchingpostmanager@gmail.com','patricianmhp@gmail.com','banningwilsongardens@gmail.com'
-    #              ]
-    emaillist = ['vchen2120@gmail.com']
+    emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','amandasteere73@gmail.com',\
+                 'jessicachowchen@yahoo.com','jianchen20042005@yahoo.com','askrich@verizon.net',\
+                 'holiday34184@gmail.com','tonymanagercrestview@gmail.com','yucaipawestwind@gmail.com',\
+                 'hitchingpostmanager@gmail.com','patricianmhp@gmail.com','banningwilsongardens@gmail.com'
+                 ]
+    # emaillist = ['vchen2120@gmail.com']
     for e in emaillist:
         if areanyPOHeligible4increase() and areanyTOHeligible4increase():
             ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
