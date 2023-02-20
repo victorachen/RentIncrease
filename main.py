@@ -1,10 +1,7 @@
-#As of Jan 19th 2023
-#If you need to change months, reference lines 269 and 271
-#everything is pretty much done, just clean up things on PDF (like who is the manager, prop address, stuff like that)
+#to do: implement SFH functionality
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
-# dateinput = datetime.date(2022,10,1)
 dateinput = datetime.date.today()
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
@@ -17,7 +14,7 @@ import os.path
 from csv import writer
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-os.chdir(r'C:\Users\19097\PycharmProjects\rentincrease')
+os.chdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease')
 ezgmail.init()
 
 #return the date 3 months from dateinput
@@ -43,7 +40,7 @@ def convertdate(date):
     return combined
 
 # rentincreasedate = Xmonthsfromnow(2)
-proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Wilson Gardens', 'Crestview', \
+proplist = ['Holiday', 'Mt Vista', 'Westwind', 'Avalon','Aladdin','Bonanza', 'Crestview', \
          'Hitching Post', 'Patrician', 'Wishing Well', 'SFH']
 
 #2 arguments: (1) property - ie) 'Holiday' and (2) attribute - ie)'Park Name'
@@ -55,7 +52,10 @@ def PropertyAttributeMapper(property,attribute):
         'Westwind': {'Park Name': 'Westwind Estates', 'LLC': 'Yucaipa Westwind Estates, LLC', 'Num_Spaces': 87,'Address':'12380 4th St'},
         'Crestview': {'Park Name': 'Crestview', 'LLC': 'Yucaipa Crestview, LLC', 'Num_Spaces': 55, 'Address':'12821 4th St'},
         'Hitching Post': {'Park Name': 'Hitching Post', 'LLC': 'Hitching Post Mobile Home Park, LLC', 'Num_Spaces': 111, 'Address':'34642 Yucaipa Blvd'},
-        'Wishing Well': {'Park Name': 'Wishing Well', 'LLC': 'Wishing Well Mobile Home Park, LLC', 'Num_Spaces': 73, 'Address':'13063 5th St'}
+        'Wishing Well': {'Park Name': 'Wishing Well', 'LLC': 'Wishing Well Mobile Home Park, LLC', 'Num_Spaces': 73, 'Address':'13063 5th St'},
+        'Avalon':{'Park Name': 'Avalon', 'LLC': 'Avalon Mobile Home Park', 'Num_Spaces': 86, 'Address':'35011 Avenue E'},
+        'Aladdin':{'Park Name': 'Aladdin', 'LLC': 'Aladdin Mobile Home Park', 'Num_Spaces': 97, 'Address':'12813 7th St'},
+        'Bonanza':{'Park Name': 'Bonanza', 'LLC': 'Bonanza Mobile Home Park', 'Num_Spaces': 83, 'Address':'13645 5th St'}
     }
     return d[property][attribute]
 
@@ -71,12 +71,15 @@ def abbr_prop(longpropname):
             return i
     return 'No prop found'
 
-#I have yet to use this! (copied pasta'd from old code)
+#2023 update: Now implementing this!
 # abbreviate name of complex for txt msg. takes in full name of unit & returns abbr unit name string
-def abbr_complex(complex):
-    d = {'Holiday': 'Hol', 'Mt Vista': 'MtV', 'Westwind': 'West', 'Wilson Gardens': 'Wilson', 'Crestview': 'Crest', \
-        'Hitching Post': 'HP', 'SFH': 'SFH', 'Patrician': 'Pat', 'Wishing Well': 'Wish'}
-    return d[complex]
+def abbr_complex(longpropname):
+    L = ['Holiday Rancho', 'Mt Vista', 'Westwind', 'Avalon', 'Aladdin', 'Bonanza', 'Crestview', \
+     'Hitching Post', 'Patrician', 'Wishing Well', 'SFH']
+    for i in L:
+        if i in longpropname:
+            return i
+    return 'None'
 
 #given a list, return whether (that row) is a tenant
 def istenant(r):
@@ -91,10 +94,24 @@ def isprop(r):
     if len(r[0])>15:
         return True
 
+#2023 Edit: Avalon, Aladdin, Bonanza have some POH that charge really low rents
+#this function return the low rent POH that may be exceptions to the rule of <$600/monthly rent
+def POH_exceptions(r,prop):
+    abbr_prop = abbr_complex(prop)
+
+    unit_num = str(r[0])
+    d = {'Avalon':['Apartment','1','6','7','16','17','22','28','32','40','41','43','44','47','48','52','54','59','61','69','77','83','85'],
+         'Aladdin':['6','8','21','29','39','43','45','46','53','55','56','58','60','64','77','86','88','90','95'],
+         'Bonanza':['82']}
+    if abbr_prop in d:
+        if unit_num in d[abbr_prop]:
+            return True
+    return False
+
 #given a list, return whether (that row) is a POH tenant
 def isPOH(r):
     rent = int(r[7].partition('.')[0].replace(',',''))
-    if rent>700:
+    if rent>599:
         return True
     else:
         return False
@@ -150,7 +167,14 @@ def alterTOH(data):
             r.append(abbr_prop(prop))
             # populate column J
             if not isPOH(r):
-                r.append('Tenant Owned')
+
+                # 2023 Edit: Avalon, Aladdin, Bonanza exceptions to cheap POH
+                if POH_exceptions(r, prop):
+                    r.append('POH')
+
+                else:
+                    r.append('Tenant Owned')
+
                 # populate column K
                 r.append(timesincelastinc(r,'TOH'))
                 r.append(isEligible(r,'TOH'))
@@ -203,8 +227,8 @@ def ink_drawing(r):
     # create a new PDF with Reportlab
     new_pdf = PdfFileReader(packet)
     # read your existing PDF
-    input_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
-    output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(r[0])+'.pdf'
+    input_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\90dayempty.pdf'
+    output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(r[0])+'.pdf'
 
     existing_pdf = PdfFileReader(open(input_path, "rb"))
     output = PdfFileWriter()
@@ -231,9 +255,9 @@ def combinePDFs(prop,PDFlist):
     # merger.close()
     merger = PdfFileMerger()
     for SpNum in PDFlist:
-        file = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
+        file = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices\Inked_Sp'+str(SpNum)+'.pdf'
         merger.append(PdfFileReader(open(file, 'rb')))
-    merger.write(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email\_'+prop+'_letters.pdf')
+    merger.write(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email\_'+prop+'_letters.pdf')
     return None
 
 #after combining, delete all the PDFs in the folder (clear the junk)
@@ -248,7 +272,7 @@ def DeleteEverythingInFolder(path):
 #create CSV for eligible POH residents
 def eligiblePOH(data):
     #first, clear the old junk from CSV file
-    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
     clearCSV(path)
 
     # title each column
@@ -267,9 +291,9 @@ def eligiblePOH(data):
     return None
 
 # Dictionary representing which months can push out Rent Increase for TOH
-TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 2,'Westwind':7}
+TOH_Dic = {'Hitching Post': 7, 'Wishing Well': 10, 'Holiday': 2, 'Mt Vista': 2, 'Crestview': 1,'Westwind':7,'Avalon':12,'Aladdin':10,'Bonanza':8}
 #Second Dic: ex) if hitching rent increase takes place in month 7, send out notif email during month 3
-TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 10,'Westwind':3}
+TOH_Dic_90daysprior = {'Hitching Post': 3, 'Wishing Well': 6, 'Holiday': 10, 'Mt Vista': 10, 'Crestview': 9,'Westwind':3,'Avalon':8,'Aladdin':6,'Bonanza':4}
 
 #helper for EligibleTOH() -- return list (eligibleTOHproplist) of props where it is time (this month) to pass out 90 days
 def EligTOHlist():
@@ -282,7 +306,7 @@ def EligTOHlist():
 #create CSV for eligible TOH residents
 def eligibleTOH(data):
     #first, clear the old junk from CSV file
-    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     clearCSV(path)
 
     #title each column
@@ -309,7 +333,7 @@ def eligibleTOH(data):
 
             # do the PDF business, for properties with TOH increase eligibility
             combinePDFs(p,PDFlist)
-            # DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
+            DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
 
         else:
             append_list_as_row(path, [p+': No TOH Increases For This Month!'])
@@ -342,7 +366,7 @@ def emailbody():
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if areanyPOHeligible4increase():
-        POHbody = '''<strong>(1)</strong> <em>POH</cem>: <strong> Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
+        POHbody = '''<strong>(1)</strong> <em>POH</em>: <strong> Avalon, Aladdin, Bonanza, Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
     else:
         POHbody = '<strong>(1)</strong> <em> POH</em>: No increases to pass out this month!<br>'
 
@@ -366,55 +390,53 @@ def emailbody():
         TOHbody = ifTOHno
 
     Tailbody = '''
+
 <p><u><strong>Notes: </strong></u><br><ul>
 <li>When passing out rent increases, please make sure to also <strong> update AppFolio</strong>, so that
   each tenant's monthly reoccuring charges reflect the updated rent amount!</li>
-<li>POH rent increases take effect twice each year-- (1) Feb 1st & (2) August 1st (notices must be passed out 30 days prior)</li>
-<li>Annual TOH Increases take effect on the following dates (notices must be passed out 90 days prior -- but prior to those 90 days, you need to get in contact with the City): 
+<li>POH rent increases take effect twice each year: Feb 1st & August 1st</li>
+<li>Annual TOH Increases take effect on the following dates: 
          <ul>
-         <li> Crestview: Feb 1st</li> 
-         <li> Holiday: Feb 1st</li>
-         <li> Mt Vista: Feb 1st</li>
-         <li> Hitching: Jul 1st</li>
-        <li>  Westwind: July 1st</li>
-         <li> Wishing: Oct 1st</li>
+         <li> Crestview: Jan 1st (Pass out 90-day by Sept 30th)</li> 
+         <li> Holiday: Feb 1st (Pass out 90-day by Oct 31st)</li>
+         <li> Mt Vista: Feb 1st (Pass out 90-day by Oct 31st)</li>
+         <li> Hitching: Jul 1st (Pass out 90-day by Mar 31st)</li>
+        <li>  Westwind: Jul 1st (Pass out 90-day by Mar 31st)</li>
+        <li> Bonanza: Aug 1st (Pass out 90-day by April 30th)</li>
+        <li> Aladdin: Oct 1st (Pass out 90-day by Jun 30th)</li>
+         <li> Wishing: Oct 1st (Pass out 90-day by Jun 30th)</li>
+         <li> Avalon: Dec 1st (Pass out 90-day by Aug 31st)</li>
+         <li> SFH: Not Included in this Email (Varies) </li>
+         </ul> 
          </ul>
-         </ul>
-*If you see any discrepencies, please call Victor (Do Not Reply to This Email)</p>'''
+*If you see any discrepencies, please call Victor</p>'''
 
     emailbody = emailbody + POHbody+ TOHbody+'\n'+Tailbody
     return emailbody
 
 def sendemail():
     #first, dump every PDF in the "Attach2Email" folder, into the list of stuff to email
-    PDFs = os.listdir(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
+    PDFs = os.listdir(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
     for i in PDFs:
-        PDFs[PDFs.index(i)] = 'C:/Users/19097/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+i
+        PDFs[PDFs.index(i)] = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+i
     #Now, fpr the rest of the stuff
-    POHoutput = r'C:\Users\19097\PycharmProjects\rentincrease\venv\POHoutput.csv'
-    TOHoutput = r'C:\Users\19097\PycharmProjects\rentincrease\venv\TOHoutput.csv'
-    eligiblePOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
-    eligibleTOH = r'C:\Users\19097\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
+    POHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
+    TOHoutput = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+    eligiblePOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligiblePOH.csv'
+    eligibleTOH = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\eligibleTOH.csv'
     emailtitle = convertdate(dateinput)+': Rent Increases That Need To Be Passed Out This Month'
 
-    emaillist = ['vchen2120@gmail.com','vac56@cornell.edu','amandasteere73@gmail.com',\
-                 'jessicachowchen@yahoo.com','jianchen20042005@yahoo.com','askrich@verizon.net',\
-                 'holiday34184@gmail.com','tonymanagercrestview@gmail.com','yucaipawestwind@gmail.com',\
-                 'hitchingpostmanager@gmail.com','patricianmhp@gmail.com','banningwilsongardens@gmail.com'
-                 ]
-    # emaillist = ['vchen2120@gmail.com']
-    for e in emaillist:
-        if areanyPOHeligible4increase() and areanyTOHeligible4increase():
-            ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
-        if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-            ezgmail.send(e, emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH],mimeSubtype='html')
-        if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
-            ezgmail.send(e, emailtitle, emailbody(), PDFs+[TOHoutput, eligibleTOH],mimeSubtype='html')
-        if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
-            ezgmail.send(e, emailtitle, emailbody(),mimeSubtype='html')
+    if areanyPOHeligible4increase() and areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH,TOHoutput,eligibleTOH],mimeSubtype='html')
+    if areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[POHoutput, eligiblePOH],mimeSubtype='html')
+    if not areanyPOHeligible4increase() and areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(), PDFs+[TOHoutput, eligibleTOH],mimeSubtype='html')
+    if not areanyPOHeligible4increase() and not areanyTOHeligible4increase():
+        ezgmail.send('vchen2120@gmail.com', emailtitle, emailbody(),mimeSubtype='html')
 
     #After sending the email, delete all PDFs (reset for next time)
-    DeleteEverythingInFolder(r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
+    DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\Attach2Email')
     print( 'Email Sent!')
     return None
 
@@ -424,17 +446,17 @@ def DownloadRentRoll():
     mostrecentemail = resultsThreads[0]
 
     #Download the csv into local directory
-    downloadfolder = r'C:\Users\19097\PycharmProjects\rentincrease\venv'
+    downloadfolder = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv'
     mostrecentemail.messages[0].downloadAllAttachments(downloadFolder=downloadfolder)
     #Name the most recently downloaded rent roll (what you did just above) --> "rentroll.csv"
     today = str(date.today()).replace('-','')
-    oldname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
-    newname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
+    oldname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rent_roll-'+today+'.csv'
+    newname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
     os.rename(oldname,newname)
 
 #get data from Rent Roll
 def GetData():
-    path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
+    path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
     file = open(path)
     reader = csv.reader(file)
     data = list(reader)
@@ -463,8 +485,8 @@ def cityformpdf():
 
     #write whatever is in Dictionary "d" to CityFormpdf
     def pdfwriter(prop, d):
-        emptypath = r'C:\Users\19097\PycharmProjects\rentincrease\venv\FillPDFs\CityFormEmpty.pdf'
-        outputpath = 'C:/Users/19097/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+abbr_complex(prop)+'_CityForm.pdf'
+        emptypath = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\CityFormEmpty.pdf'
+        outputpath = 'C:/Users/Lenovo/PycharmProjects/rentincrease/venv/FillPDFs/Attach2Email/'+abbr_complex(prop)+'_CityForm.pdf'
         reader = PdfFileReader(emptypath)
         writer = PdfFileWriter()
         fields = reader.getFields()
@@ -522,7 +544,7 @@ def cityformpdf():
 cityformpdf()
 
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
-fname = r'C:\Users\19097\PycharmProjects\rentincrease\venv\rentroll.csv'
+fname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
 if os.path.isfile(fname):
     os.remove(fname)
 #Then, let's download a fresh rentroll from Appfolio
@@ -530,12 +552,12 @@ DownloadRentRoll()
 
 # Create POHoutput.csv
 POH_data = alterPOH(GetData())
-output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\POHoutput.csv'
+output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\POHoutput.csv'
 NewCsv(POH_data, output_path)
 
 #Create TOHoutput.csv
 TOH_data = alterTOH(GetData())
-output_path = r'C:\Users\19097\PycharmProjects\rentincrease\venv\TOHoutput.csv'
+output_path = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\TOHoutput.csv'
 NewCsv(TOH_data, output_path)
 
 # Create eligiblePOH.csv
