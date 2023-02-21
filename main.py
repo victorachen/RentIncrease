@@ -1,8 +1,10 @@
-#to do: implement SFH functionality
+#to do: i don't think it needs to fill pdf's, just serve as a reminder
 #ready to go: test out a bunch of diff dates, then set dateinput to today()
 
 import datetime
-dateinput = datetime.date.today()
+# dateinput = datetime.date.today()
+from datetime import datetime
+dateinput = datetime(2023,3,1)
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from datetime import date, datetime
@@ -102,16 +104,17 @@ def POH_exceptions(r,prop):
     unit_num = str(r[0])
     d = {'Avalon':['Apartment','1','6','7','16','17','22','28','32','40','41','43','44','47','48','52','54','59','61','69','77','83','85'],
          'Aladdin':['6','8','21','29','39','43','45','46','53','55','56','58','60','64','77','86','88','90','95'],
-         'Bonanza':['82']}
+         'Bonanza':['82'],
+         'Wishing Well':['2','32','40','42','44','57','59']}
     if abbr_prop in d:
         if unit_num in d[abbr_prop]:
             return True
     return False
 
 #given a list, return whether (that row) is a POH tenant
-def isPOH(r):
+def isPOH(r,prop):
     rent = int(r[7].partition('.')[0].replace(',',''))
-    if rent>599:
+    if rent>599 or POH_exceptions(r,prop):
         return True
     else:
         return False
@@ -133,8 +136,11 @@ def timesincelastinc(r,tenant_type):
     return days_between(rentincreasedate,r[5])
 
 #given a list, return whether (that row) is Eligible for rent increase
-def isEligible(r,tenant_type):
+def isEligible(r,tenant_type,prop):
     if timesincelastinc(r,tenant_type)>=330:
+        return 'Is Eligible'
+    #2023 Edit: Make Exceptions for Avalon, Aladdin, Bon (Increase rent anyway!)
+    if prop == 'Avalon' or prop == 'Aladdin' or prop == 'Bonanza':
         return 'Is Eligible'
     return ''
 
@@ -147,11 +153,11 @@ def alterPOH(data):
             # populate column I
             r.append(abbr_prop(prop))
             # populate column J
-            if isPOH(r):
+            if isPOH(r,prop):
                 r.append('POH')
             # populate column K
                 r.append(timesincelastinc(r,'POH'))
-                r.append(isEligible(r,'POH'))
+                r.append(isEligible(r,'POH',abbr_complex(prop)))
             else:
                 r.append('Tenant Owned')
     return data
@@ -166,7 +172,7 @@ def alterTOH(data):
             # populate column I
             r.append(abbr_prop(prop))
             # populate column J
-            if not isPOH(r):
+            if not isPOH(r,prop):
 
                 # 2023 Edit: Avalon, Aladdin, Bonanza exceptions to cheap POH
                 if POH_exceptions(r, prop):
@@ -177,7 +183,7 @@ def alterTOH(data):
 
                 # populate column K
                 r.append(timesincelastinc(r,'TOH'))
-                r.append(isEligible(r,'TOH'))
+                r.append(isEligible(r,'TOH',abbr_complex(prop)))
             else:
                 r.append('POH')
     return data
@@ -286,7 +292,7 @@ def eligiblePOH(data):
     for p in proplist:
         append_list_as_row(path,[p])
         for r in data:
-            if istenant(r) and isPOH(r) and isEligible(r,'POH') == "Is Eligible" and r[8] in p:
+            if istenant(r) and isPOH(r,p) and isEligible(r,'POH',abbr_complex(p)) == "Is Eligible" and r[8] in p:
                 append_list_as_row(path,r)
     return None
 
@@ -317,6 +323,8 @@ def eligibleTOH(data):
     append_list_as_row(path,titles)
     append_list_as_row(path,[])
 
+
+
     for p in TOH_Dic:
         if p in EligTOHlist():
             #you're doing 2 things at once here and it's getting super confusing
@@ -324,15 +332,18 @@ def eligibleTOH(data):
 
             append_list_as_row(path, [p])
             for r in data:
-                if istenant(r) and not isPOH(r) and r[8] in p:
+                if istenant(r) and not isPOH(r,p) and r[8] in p:
                     append_list_as_row(path,r)
+
+                    # 2023 edit: eliminating this whole pdf business!!!!!
+
                     #create a pdf for every TOH that deserves an increase
-                    ink_drawing(r)
-                    #create a list of PDFs that you want combinePDFs() to glue together
-                    PDFlist.append(r[0])
+                    # ink_drawing(r)
+                    # #create a list of PDFs that you want combinePDFs() to glue together
+                    # PDFlist.append(r[0])
 
             # do the PDF business, for properties with TOH increase eligibility
-            combinePDFs(p,PDFlist)
+            # combinePDFs(p,PDFlist)
             DeleteEverythingInFolder(r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\FillPDFs\indiv_notices')
 
         else:
@@ -366,7 +377,7 @@ def emailbody():
 
     #only pass out POH Rent Increases during beginning & middle of the year (Aug 1st [6] & Feb 1st [11])
     if areanyPOHeligible4increase():
-        POHbody = '''<strong>(1)</strong> <em>POH</em>: <strong> Avalon, Aladdin, Bonanza, Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, & Westwind </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
+        POHbody = '''<strong>(1)</strong> <em>POH</em>: <strong> Avalon, Aladdin, Bonanza, Hitching Post, Wishing Well, Holiday, Mt Vista, Crestview, Patrician, Westwind, & some Single Family Homes </strong> need 30 day notices passed out. Increase To Take Effect: <strong>''' + Xmonthsfromnow(2,dateinput)+"</strong>-- <br><em> (See 'eligiblePOH.csv' for a list of POH tenants needing increases)</em><br>"
     else:
         POHbody = '<strong>(1)</strong> <em> POH</em>: No increases to pass out this month!<br>'
 
@@ -394,19 +405,18 @@ def emailbody():
 <p><u><strong>Notes: </strong></u><br><ul>
 <li>When passing out rent increases, please make sure to also <strong> update AppFolio</strong>, so that
   each tenant's monthly reoccuring charges reflect the updated rent amount!</li>
-<li>POH rent increases take effect twice each year: Feb 1st & August 1st</li>
+<li>POH rent increases take effect twice each year: Feb 1st (pass out 30-day by Dec 31) & August 1st (pass out 30-day by June 30)</li>
 <li>Annual TOH Increases take effect on the following dates: 
          <ul>
-         <li> Crestview: Jan 1st (Pass out 90-day by Sept 30th)</li> 
-         <li> Holiday: Feb 1st (Pass out 90-day by Oct 31st)</li>
-         <li> Mt Vista: Feb 1st (Pass out 90-day by Oct 31st)</li>
-         <li> Hitching: Jul 1st (Pass out 90-day by Mar 31st)</li>
-        <li>  Westwind: Jul 1st (Pass out 90-day by Mar 31st)</li>
-        <li> Bonanza: Aug 1st (Pass out 90-day by April 30th)</li>
-        <li> Aladdin: Oct 1st (Pass out 90-day by Jun 30th)</li>
-         <li> Wishing: Oct 1st (Pass out 90-day by Jun 30th)</li>
-         <li> Avalon: Dec 1st (Pass out 90-day by Aug 31st)</li>
-         <li> SFH: Not Included in this Email (Varies) </li>
+         <li> Crestview: Jan 1st (Pass out 90-day by Sept 30)</li> 
+         <li> Holiday: Feb 1st (Pass out 90-day by Oct 31)</li>
+         <li> Mt Vista: Feb 1st (Pass out 90-day by Oct 31)</li>
+         <li> Hitching: Jul 1st (Pass out 90-day by Mar 31)</li>
+        <li>  Westwind: Jul 1st (Pass out 90-day by Mar 31)</li>
+        <li> Bonanza: Aug 1st (Pass out 90-day by April 30)</li>
+        <li> Aladdin: Oct 1st (Pass out 90-day by Jun 30)</li>
+         <li> Wishing: Oct 1st (Pass out 90-day by Jun 30)</li>
+         <li> Avalon: Dec 1st (Pass out 90-day by Aug 31)</li>
          </ul> 
          </ul>
 *If you see any discrepencies, please call Victor</p>'''
@@ -474,7 +484,7 @@ def CityFormPdfHelper(data):
             Dic = {}
             Dic[p] = 'cityformpdfhelper'
             for r in data:
-                if istenant(r) and not isPOH(r) and r[8] in p:
+                if istenant(r) and not isPOH(r,p) and r[8] in p:
                     Dic[r[0]] = [r[0],r[3],r[7]]
             #Add the Dic to the ListofDics
             ListOfDics.append(Dic)
@@ -541,7 +551,7 @@ def cityformpdf():
                 pdfwriter(possiblecomplex,d)
                 print(d)
     return None
-cityformpdf()
+# cityformpdf()
 
 #Before we start anything, let's delete all previous files in local directory named "rentroll.csv"
 fname = r'C:\Users\Lenovo\PycharmProjects\rentincrease\venv\rentroll.csv'
