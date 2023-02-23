@@ -405,18 +405,18 @@ def emailbody():
 <p><u><strong>Notes: </strong></u><br><ul>
 <li>When passing out rent increases, please make sure to also <strong> update AppFolio</strong>, so that
   each tenant's monthly reoccuring charges reflect the updated rent amount!</li>
-<li>POH rent increases take effect twice each year: Feb 1st (pass out 30-day by Dec 31) & August 1st (pass out 30-day by June 30)</li>
+<li>POH rent increases take effect twice each year: Feb 1st (pass out 30-day by Dec 31) & Aug 1st (pass out 30-day by June 30)</li>
 <li>Annual TOH Increases take effect on the following dates: 
          <ul>
-         <li> Crestview: Jan 1st (Pass out 90-day by Sept 30)</li> 
-         <li> Holiday: Feb 1st (Pass out 90-day by Oct 31)</li>
-         <li> Mt Vista: Feb 1st (Pass out 90-day by Oct 31)</li>
-         <li> Hitching: Jul 1st (Pass out 90-day by Mar 31)</li>
-        <li>  Westwind: Jul 1st (Pass out 90-day by Mar 31)</li>
-        <li> Bonanza: Aug 1st (Pass out 90-day by April 30)</li>
-        <li> Aladdin: Oct 1st (Pass out 90-day by Jun 30)</li>
-         <li> Wishing: Oct 1st (Pass out 90-day by Jun 30)</li>
-         <li> Avalon: Dec 1st (Pass out 90-day by Aug 31)</li>
+         <li> Crestview: Jan 1st (Kim Everts requests packet by Sept 10; Pass out 90-day by Sept 30)</li> 
+         <li> Holiday: Feb 1st (Kim Everts requests packet by Oct 10; Pass out 90-day by Oct 31)</li>
+         <li> Mt Vista: Feb 1st (Kim Everts requests packet by Oct 10; Pass out 90-day by Oct 31)</li>
+         <li> Hitching: Jul 1st (Kim Everts requests packet by Mar 10; Pass out 90-day by Mar 31)</li>
+        <li>  Westwind: Jul 1st (Kim Everts requests packet by Mar 10; Pass out 90-day by Mar 31)</li>
+        <li> Bonanza: Aug 1st (Kim Everts requests packet by Apr 10; Pass out 90-day by Apr 30)</li>
+        <li> Aladdin: Oct 1st (Kim Everts requests packet by Jun 10; Pass out 90-day by Jun 30)</li>
+         <li> Wishing: Oct 1st (Kim Everts requests packet by Jun 10; Pass out 90-day by Jun 30)</li>
+         <li> Avalon: Dec 1st (Kim Everts requests packet by Aug 10; Pass out 90-day by Aug 31)</li>
          </ul> 
          </ul>
 *If you see any discrepencies, please call Victor</p>'''
