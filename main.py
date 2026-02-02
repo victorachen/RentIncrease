@@ -3,10 +3,22 @@
 # =========================================================
 BASE_DIR_STR = r"C:\Users\vchen\OneDrive\Documents\pycharmprojects\rentincrease"
 
-# Run mode toggles
-TEST_RUN = False                  # True = sends ONLY to Victor + ignores sent-flag (great for testing)
-DEBUG_PRINT_PATHS = True         # True = prints derived paths at startup
-ONLY_SEND_ON_DAY_1 = False        # True = only send on the 1st (unless TEST_RUN)
+# RUN MODE
+# -------------------------------------------------------------------------
+# TEST_RUN = True:
+#   - Sends email ONLY to Victor (vchen2120@gmail.com)
+#   - Ignores the "already sent this month" flag so you can test repeatedly
+#   - Does NOT require it to be the 1st of the month
+#
+# TEST_RUN = False (REAL MODE):
+#   - Sends to the full distribution list
+#   - ONLY sends if today is the 1st of the month
+#   - Skips sending if the "already sent this month" flag exists
+#   - Writes the sent-flag after successfully sending
+# -------------------------------------------------------------------------
+TEST_RUN = True
+
+DEBUG_PRINT_PATHS = True
 # =========================================================
 
 import datetime
@@ -47,7 +59,6 @@ if DEBUG_PRINT_PATHS:
     print("LOG_PATH:", LOG_PATH)
     print("FLAG_FILE:", FLAG_FILE)
     print("TEST_RUN:", TEST_RUN)
-    print("ONLY_SEND_ON_DAY_1:", ONLY_SEND_ON_DAY_1)
     print("==================\n")
 
 # =========================
@@ -97,16 +108,12 @@ MONTH_ABBR = {
     7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
 }
 
-# POH (updated): increases take effect twice each year on Jan 1 and Jul 1
-# Notices are 60-day, so pass out 2 months prior: Nov (for Jan) and May (for Jul)
-POH_EFFECTIVE_MONTHS = {
-    1: "POH: Increases for <strong>First Half of Year</strong> to take effect",
-    7: "POH: Increases for <strong>Second Half of Year</strong> to take effect",
-}
-POH_NOTICE_MONTHS = {
-    11: "POH: <strong>60-day notices</strong> to pass out (for Jan 1 increases)",
-    5:  "POH: <strong>60-day notices</strong> to pass out (for Jul 1 increases)",
-}
+# POH:
+# - Increases take effect twice each year on Jan 1 and Jul 1
+# - Notices are 60-day, so pass out 2 months prior: Nov (for Jan) and May (for Jul)
+POH_EFFECTIVE_MONTHS = {1: "Jan 1", 7: "Jul 1"}
+POH_NOTICE_MONTHS = {11: "Nov (60-day notices for Jan 1)",
+                     5:  "May (60-day notices for Jul 1)"}
 
 # TOH (Crestview updated): effective Jun 1, notices by end of Feb
 TOH_EFFECTIVE_MONTH = {
@@ -141,50 +148,50 @@ def email_subject(d: datetime.date) -> str:
     return f"{d.strftime('%B')} {d.year}: Rent Increases Reminder"
 
 def _html_list(items):
+    # Tight list spacing (so the calendar header isn't miles away)
     if not items:
         return "<em>None.</em><br>"
-    return "<ul style='margin-top:4px; margin-bottom:8px;'>" + "".join(f"<li>{x}</li>" for x in items) + "</ul>"
+    return "<ul style='margin-top:2px; margin-bottom:4px;'>" + "".join(f"<li>{x}</li>" for x in items) + "</ul>"
 
-def _fmt_toh_notice(props):
-    # Property first: "TOH: Wishing Well 90-day notices to pass out"
-    props = sorted(props)
-    if len(props) == 1:
-        return f"<strong>TOH:</strong> {props[0]} <strong>90-day notices</strong> to pass out"
-    return f"<strong>TOH:</strong> {', '.join(props)} <strong>90-day notices</strong> to pass out"
-
-def _fmt_toh_effective(props):
-    # Property first: "TOH: Holiday, Mt Vista to take effect"
-    props = sorted(props)
-    if len(props) == 1:
-        return f"<strong>TOH:</strong> {props[0]} to take effect"
-    return f"<strong>TOH:</strong> {', '.join(props)} to take effect"
+def poh_effective_phrase(month: int) -> str:
+    if month == 1:
+        return "POH: Increases for First Half of Year To Take Effect"
+    if month == 7:
+        return "POH: Increases for Second Half of Year To Take Effect"
+    return "POH: Increases To Take Effect"
 
 def actions_for_month(month: int):
     """
     Returns two lists:
       A) must_pass_out (notices to deliver this month)
       B) to_take_effect (increases that take effect this month)
+
+    Formatting rules:
+      - Property names come first for TOH
+        • Notices: "TOH: Wishing Well 90-day notices to pass out"
+        • Effective: "TOH: Holiday to take effect"
+      - POH effective phrasing changes in Jan vs Jul
     """
     must_pass_out = []
     to_take_effect = []
 
     # POH notices
     if month in POH_NOTICE_MONTHS:
-        must_pass_out.append(POH_NOTICE_MONTHS[month])
+        must_pass_out.append("POH: 60-day notices to pass out (all POH)")
 
-    # POH effective (custom wording by month)
+    # POH effective
     if month in POH_EFFECTIVE_MONTHS:
-        to_take_effect.append(POH_EFFECTIVE_MONTHS[month])
+        to_take_effect.append(poh_effective_phrase(month))
 
-    # TOH notices (property-first wording)
-    toh_notice_props = [p for p, m in TOH_NOTICE_MONTH.items() if m == month]
-    if toh_notice_props:
-        must_pass_out.append(_fmt_toh_notice(toh_notice_props))
+    # TOH notices (property name first)
+    toh_notice_props = sorted([p for p, m in TOH_NOTICE_MONTH.items() if m == month])
+    for p in toh_notice_props:
+        must_pass_out.append(f"TOH: {p} 90-day notices to pass out")
 
-    # TOH effective (property-first wording)
-    toh_effective_props = [p for p, m in TOH_EFFECTIVE_MONTH.items() if m == month]
-    if toh_effective_props:
-        to_take_effect.append(_fmt_toh_effective(toh_effective_props))
+    # TOH effective (property name first)
+    toh_effective_props = sorted([p for p, m in TOH_EFFECTIVE_MONTH.items() if m == month])
+    for p in toh_effective_props:
+        to_take_effect.append(f"TOH: {p} to take effect")
 
     return must_pass_out, to_take_effect
 
@@ -208,13 +215,14 @@ def year_at_a_glance_table_html():
             "</tr>"
         )
 
+    # Reduced spacing before calendar header
     return (
-        # Reduced whitespace above this header per your request
-        "<br><strong>📅 Rent Increase Calendar Overview (Year at a Glance)</strong><br><br>"
+        "<br>"
+        "<strong>📅 Rent Increase Calendar Overview (Year at a Glance)</strong><br><br>"
         "<table border='1' cellspacing='0' cellpadding='0' style='border-collapse:collapse;'>"
         "<tr>"
         "<th style='padding:6px 10px; text-align:left;'>Month</th>"
-        "<th style='padding:6px 10px; text-align:left;'>A) Must Pass Out</th>"
+        "<th style='padding:6px 10px; text-align:left;'>A) Must Pass Out (Notices)</th>"
         "<th style='padding:6px 10px; text-align:left;'>B) To Take Effect</th>"
         "</tr>"
         + "".join(rows) +
@@ -223,22 +231,21 @@ def year_at_a_glance_table_html():
 
 def email_body_html(d: datetime.date) -> str:
     """
-    Email body per your exact preferred format:
-      Header: "Rent Increases Feb 2026"
-      A) Must Pass Out (This Month)
-      B) To Take Effect (This Month)
-      (tight spacing)
-      Year-at-a-glance calendar
+    Body format:
+      - Title: "Rent Increases Feb 2026"
+      - Underlined A) and B) headings (as you requested)
+      - Then year-at-a-glance calendar (tight spacing)
     """
     month_year = f"{d.strftime('%b')} {d.year}"   # e.g. "Feb 2026"
     title = f"<strong>Rent Increases {month_year}</strong><br><br>"
 
     must_pass_out, to_take_effect = actions_for_month(d.month)
 
-    section_a = "<strong>A) Must Pass Out (This Month)</strong><br>" + _html_list(must_pass_out)
-    section_b = "<strong>B) To Take Effect (This Month)</strong><br>" + _html_list(to_take_effect)
+    # Underlined headings:
+    # Use <u> because *asterisks* aren't meaningful in HTML email rendering.
+    section_a = "<u><strong>A) Must Pass Out (This Month)</strong></u><br>" + _html_list(must_pass_out)
+    section_b = "<u><strong>B) To Take Effect (This Month)</strong></u><br>" + _html_list(to_take_effect)
 
-    # Reduce gap before calendar: only one <br> inserted in year_at_a_glance_table_html()
     return title + section_a + section_b + year_at_a_glance_table_html()
 
 # =========================
@@ -246,9 +253,10 @@ def email_body_html(d: datetime.date) -> str:
 # =========================
 
 if __name__ == "__main__":
-    # Only run on the 1st (unless TEST_RUN)
-    if ONLY_SEND_ON_DAY_1 and (today.day != 1) and (not TEST_RUN):
-        print("Not the 1st of the month. Exiting.")
+    # REAL MODE: only send on the 1st of the month.
+    # TEST_RUN: send anytime (so you can test) but only to Victor.
+    if (not TEST_RUN) and (today.day != 1):
+        print("Not the 1st of the month (REAL MODE). Exiting.")
         raise SystemExit(0)
 
     init_gmail()
@@ -261,10 +269,11 @@ if __name__ == "__main__":
     print(body)
     print("==== END PREVIEW ====\n")
 
-    # Skip if already sent this month (unless testing)
+    # REAL MODE: skip if already sent this month
+    # TEST_RUN: ignore the sent-flag so you can re-run repeatedly
     if (not TEST_RUN) and already_sent_this_month():
-        print("Email already sent this month. Skipping.")
-        logging.info("Email already sent this month. Skipping.")
+        print("Email already sent this month (REAL MODE). Skipping.")
+        logging.info("Email already sent this month (REAL MODE). Skipping.")
         raise SystemExit(0)
 
     try:
@@ -276,7 +285,7 @@ if __name__ == "__main__":
                 mimeSubtype="html"
             )
 
-        # Only write the flag in real mode
+        # REAL MODE: write the flag so it won't send again this month
         if not TEST_RUN:
             mark_as_sent()
 
